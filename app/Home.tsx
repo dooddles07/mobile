@@ -65,16 +65,17 @@ const Home = () => {
   const router = useRouter();
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const statusCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const storedUsername = await AsyncStorage.getItem("username");
         const storedFullname = await AsyncStorage.getItem("fullname");
-        
+
         setUsername(storedUsername || "Guest");
         setFullname(storedFullname || storedUsername || "Guest");
-        
+
         // Check if user has active SOS on app start
         if (storedUsername) {
           await checkActiveSOS(storedUsername);
@@ -92,6 +93,9 @@ const Home = () => {
       if (locationIntervalRef.current) {
         clearInterval(locationIntervalRef.current);
       }
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
+      }
     };
   }, []);
 
@@ -100,16 +104,65 @@ const Home = () => {
       const response = await axios.get(
         `http://192.168.100.6:10000/api/sos/active/${username}`
       );
-      
+
       if (response.data.hasActiveSOS) {
         setSosActive(true);
         startPulseAnimation();
         // Resume location tracking
         startLocationTracking();
+        // Start status checking to detect admin resolve
+        startStatusChecking();
       }
     } catch (error) {
       console.log("No active SOS found");
     }
+  };
+
+  const startStatusChecking = () => {
+    // Check SOS status every 10 seconds
+    statusCheckIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await axios.get(
+          `http://192.168.100.6:10000/api/sos/active/${username}`
+        );
+
+        // If no active SOS found, admin has resolved it
+        if (!response.data.hasActiveSOS) {
+          await handleAdminResolve();
+        }
+      } catch (error: any) {
+        // 404 means no active SOS - admin resolved it
+        if (error?.response?.status === 404) {
+          await handleAdminResolve();
+        }
+      }
+    }, 10000) as any; // Check every 10 seconds
+  };
+
+  const stopStatusChecking = () => {
+    if (statusCheckIntervalRef.current) {
+      clearInterval(statusCheckIntervalRef.current);
+      statusCheckIntervalRef.current = null;
+    }
+  };
+
+  const handleAdminResolve = async () => {
+    console.log("SOS has been resolved by admin");
+
+    // Stop all tracking and animations
+    await stopLocationTracking();
+    stopPulseAnimation();
+    stopStatusChecking();
+
+    // Update UI
+    setSosActive(false);
+
+    // Notify user
+    Alert.alert(
+      "SOS Resolved",
+      "Your emergency has been resolved by emergency responders. Stay safe!",
+      [{ text: "OK" }]
+    );
   };
 
   const startPulseAnimation = () => {
@@ -230,15 +283,18 @@ const Home = () => {
             onPress: async () => {
               try {
                 setLoading(true);
-                
+
                 // Stop location tracking
                 await stopLocationTracking();
-                
+
+                // Stop status checking
+                stopStatusChecking();
+
                 // Cancel SOS in backend
                 await axios.post("http://192.168.100.6:10000/api/sos/cancel", {
                   username,
                 });
-                
+
                 stopPulseAnimation();
                 setSosActive(false);
                 Alert.alert("SOS Cancelled", "Your SOS alert has been cancelled and location tracking stopped.");
@@ -288,13 +344,16 @@ const Home = () => {
   );
 
   console.log("Initial SOS response:", response.data);
-  
+
   startPulseAnimation();
   setSosActive(true);
   setLastUpdate(new Date());
-  
+
   await startLocationTracking();
-  
+
+  // Start checking SOS status for admin resolve
+  startStatusChecking();
+
   Alert.alert(
     "SOS Activated",
     `Your location is being tracked every minute.\n\nAccuracy: ${Math.round(locationAccuracy || 0)}m\nLocation: ${response.data.sos.address || 'Location sent'}`,

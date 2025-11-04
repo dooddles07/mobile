@@ -15,7 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 
-const API_URL = "http://192.168.100.6:10000/api/auth";
+const API_URL = "http://192.168.100.6:10000/api/auth"; // Your computer's IP address
 
 const LoginScreen = () => {
   const [username, setUsername] = useState("");
