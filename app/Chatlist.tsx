@@ -294,7 +294,7 @@ const ChatList: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#7e57c2" />
+        <ActivityIndicator size="large" color="#14b8a6" />
         <Text style={styles.loadingText}>Loading conversations...</Text>
       </View>
     );
@@ -339,8 +339,8 @@ const ChatList: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#7e57c2']}
-            tintColor="#7e57c2"
+            colors={['#14b8a6']}
+            tintColor="#14b8a6"
           />
         }
       />
@@ -351,30 +351,31 @@ const ChatList: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5"
+    backgroundColor: "#f0f9ff"
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: "#f5f5f5"
+    backgroundColor: "#f0f9ff"
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
+    color: "#6b7280",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#7e57c2",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    backgroundColor: "#14b8a6",
+    paddingTop: 50,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
     elevation: 4,
-    shadowColor: "#000",
+    shadowColor: "#14b8a6",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
   },
   headerBack: {
@@ -406,21 +407,21 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   chatCard: {
-    padding: 15,
-    borderRadius: 10,
-    backgroundColor: "#fff",
-    marginHorizontal: 10,
-    marginBottom: 10,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    marginHorizontal: 16,
+    marginBottom: 12,
     elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowColor: "#14b8a6",
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 8,
   },
   unreadCard: {
-    backgroundColor: "#f0f4ff",
+    backgroundColor: "rgba(224, 242, 254, 0.95)",
     borderLeftWidth: 4,
-    borderLeftColor: "#7e57c2",
+    borderLeftColor: "#14b8a6",
   },
   chatHeader: {
     flexDirection: "row",
@@ -436,10 +437,10 @@ const styles = StyleSheet.create({
   chatName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: "#1f2937",
   },
   unreadBadge: {
-    backgroundColor: '#7e57c2',
+    backgroundColor: '#14b8a6',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -455,12 +456,12 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
-    color: "#999",
+    color: "#9ca3af",
     marginLeft: 8,
   },
   lastMessage: {
     fontSize: 14,
-    color: "#666",
+    color: "#6b7280",
     marginTop: 4,
   },
   archivedText: {
@@ -479,33 +480,33 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: "#666",
+    color: "#1f2937",
     marginTop: 15,
     marginBottom: 5,
   },
   emptySubtext: {
     fontSize: 14,
-    color: "#999",
+    color: "#6b7280",
     textAlign: 'center',
     marginBottom: 20,
   },
   startChatButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#7e57c2',
+    backgroundColor: '#14b8a6',
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
+    paddingVertical: 14,
+    borderRadius: 16,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    shadowColor: '#14b8a6',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   startChatButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 8,
   },
 });

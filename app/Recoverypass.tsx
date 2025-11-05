@@ -5,14 +5,16 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = 'http://192.168.100.6:10000/api/auth';
 
@@ -135,53 +137,71 @@ const RecoveryPass = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <LinearGradient
+      colors={["#f0f9ff", "#e0f2fe", "#ddd6fe"]}
+      style={styles.container}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, width: "100%" }}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+        <ScrollView
+          contentContainerStyle={styles.innerContainer}
+          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.content}>
-            <View style={styles.header}>
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={styles.backButton}
-                disabled={loading}
-              >
-                <Text style={styles.backIcon}>←</Text>
-              </TouchableOpacity>
-            </View>
+          {/* Header with Back Button */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              disabled={loading}
+            >
+              <Ionicons name="arrow-back" size={24} color="#1f2937" />
+            </TouchableOpacity>
+          </View>
 
+          {/* Logo and Title */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require("../assets/images/bg1.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.title}>Reset Password</Text>
             <Text style={styles.subtitle}>
-              Enter the 6-digit code sent to your email and create a new password.
+              Enter the 6-digit code sent to your email and create a new password
             </Text>
+          </View>
 
-            {countdown > 0 ? (
-              <View style={styles.timerContainer}>
-                <Text style={styles.timerText}>
-                  Code expires in: <Text style={styles.timerValue}>{formatTime(countdown)}</Text>
-                </Text>
-              </View>
-            ) : (
-              <View style={[styles.timerContainer, styles.expiredContainer]}>
-                <Text style={styles.expiredText}>
-                  ⚠️ Code has expired. Please request a new one.
-                </Text>
-              </View>
-            )}
+          {/* Timer/Countdown */}
+          {countdown > 0 ? (
+            <View style={styles.timerContainer}>
+              <Ionicons name="time-outline" size={18} color="#f97316" style={{ marginRight: 8 }} />
+              <Text style={styles.timerText}>
+                Code expires in: <Text style={styles.timerValue}>{formatTime(countdown)}</Text>
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.timerContainer, styles.expiredContainer]}>
+              <Ionicons name="alert-circle-outline" size={18} color="#ef4444" style={{ marginRight: 8 }} />
+              <Text style={styles.expiredText}>
+                Code expired. Request a new one.
+              </Text>
+            </View>
+          )}
 
+          {/* Input Fields */}
+          <View style={styles.formContainer}>
             {!params?.email && (
-              <View style={styles.inputContainer}>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="mail-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Your Email"
-                  placeholderTextColor="#999"
                   value={email}
                   onChangeText={setEmail}
+                  placeholder="Email"
+                  placeholderTextColor="#9ca3af"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -190,250 +210,297 @@ const RecoveryPass = () => {
               </View>
             )}
 
-            <View style={styles.inputContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="key-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="6-Digit Reset Code"
-                placeholderTextColor="#999"
                 value={resetCode}
                 onChangeText={(text) => setResetCode(text.replace(/[^0-9]/g, ''))}
+                placeholder="6-Digit Reset Code"
+                placeholderTextColor="#9ca3af"
                 keyboardType="number-pad"
                 maxLength={6}
                 editable={!loading}
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="New Password"
-                  placeholderTextColor="#999"
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  editable={!loading}
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
+              <TextInput
+                value={newPassword}
+                onChangeText={setNewPassword}
+                style={styles.input}
+                placeholder="New Password"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                editable={!loading}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+                disabled={loading}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#6b7280"
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeButton}
-                  disabled={loading}
-                >
-                  <Text style={styles.eyeIcon}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-                </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.inputContainer}>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="Confirm Password"
-                  placeholderTextColor="#999"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  autoCapitalize="none"
-                  editable={!loading}
+            <View style={styles.inputWrapper}>
+              <Ionicons name="lock-closed-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
+              <TextInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                style={styles.input}
+                placeholder="Confirm Password"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                editable={!loading}
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={styles.eyeIcon}
+                disabled={loading}
+              >
+                <Ionicons
+                  name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#6b7280"
                 />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={styles.eyeButton}
-                  disabled={loading}
-                >
-                  <Text style={styles.eyeIcon}>{showConfirmPassword ? '👁️' : '👁️‍🗨️'}</Text>
-                </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             </View>
 
-            <Text style={styles.passwordHint}>
-              • Password must be at least 6 characters{'\n'}
-              • Passwords must match
-            </Text>
+            <View style={styles.passwordHintContainer}>
+              <Text style={styles.passwordHint}>• Password must be at least 6 characters</Text>
+              <Text style={styles.passwordHint}>• Passwords must match</Text>
+            </View>
 
             <TouchableOpacity
-              style={[styles.confirmButton, loading && styles.confirmButtonDisabled]}
+              style={[styles.button, loading && styles.buttonDisabled]}
               onPress={handleResetPassword}
               disabled={loading}
+              activeOpacity={0.8}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.confirmButtonText}>Reset Password</Text>
+                <>
+                  <Text style={styles.buttonText}>Reset Password</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
+                </>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.resendButton}
+              style={[styles.resendButton, (loading || !canResend) && styles.resendButtonDisabled]}
               onPress={handleResendCode}
               disabled={loading || !canResend}
+              activeOpacity={0.8}
             >
               <Text style={[styles.resendText, (loading || !canResend) && styles.resendTextDisabled]}>
                 {canResend ? "Resend Code" : `Wait ${formatTime(countdown)} to resend`}
               </Text>
             </TouchableOpacity>
 
-            <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>Remember your password? </Text>
-              <TouchableOpacity onPress={() => router.push('/')} disabled={loading}>
-                <Text style={styles.loginLink}>Log in</Text>
-              </TouchableOpacity>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
             </View>
+
+            <TouchableOpacity
+              onPress={() => router.push("/")}
+              disabled={loading}
+              style={styles.loginButton}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.loginButtonText}>Back to Sign In</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
+  innerContainer: {
     flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   header: {
-    paddingTop: 10,
-    paddingBottom: 20,
+    paddingTop: 50,
+    paddingBottom: 10,
+    width: '100%',
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  backIcon: {
-    fontSize: 24,
-    color: '#000',
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 10,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-    lineHeight: 20,
+    fontSize: 15,
+    color: '#6b7280',
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
   timerContainer: {
-    backgroundColor: '#FFF9E6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(251, 191, 36, 0.1)',
     padding: 12,
-    borderRadius: 10,
-    marginBottom: 20,
+    borderRadius: 12,
+    marginVertical: 16,
     borderWidth: 1,
-    borderColor: '#FFE082',
+    borderColor: 'rgba(251, 191, 36, 0.3)',
   },
   timerText: {
     fontSize: 14,
-    color: '#F57C00',
-    textAlign: 'center',
+    color: '#f97316',
   },
   timerValue: {
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 15,
   },
   expiredContainer: {
-    backgroundColor: '#FFEBEE',
-    borderColor: '#EF5350',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   expiredText: {
     fontSize: 14,
-    color: '#C62828',
-    textAlign: 'center',
+    color: '#ef4444',
     fontWeight: '600',
   },
-  inputContainer: {
-    marginBottom: 16,
+  formContainer: {
+    width: '100%',
   },
-  input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 25,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#000',
-  },
-  passwordContainer: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 25,
-    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    shadowColor: '#14b8a6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  passwordInput: {
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     fontSize: 16,
-    color: '#000',
-  },
-  eyeButton: {
-    padding: 5,
+    color: '#1f2937',
   },
   eyeIcon: {
-    fontSize: 20,
+    padding: 8,
+  },
+  passwordHintContainer: {
+    marginBottom: 20,
+    paddingLeft: 4,
   },
   passwordHint: {
     fontSize: 12,
-    color: '#999',
-    marginBottom: 20,
-    marginLeft: 10,
+    color: '#6b7280',
     lineHeight: 18,
   },
-  confirmButton: {
-    backgroundColor: '#7CB342',
-    borderRadius: 25,
+  button: {
+    backgroundColor: '#14b8a6',
     paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    shadowColor: '#14b8a6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  confirmButtonDisabled: {
-    opacity: 0.7,
+  buttonDisabled: {
+    opacity: 0.6,
   },
-  confirmButtonText: {
+  buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
   resendButton: {
-    paddingVertical: 15,
+    paddingVertical: 16,
     alignItems: 'center',
   },
+  resendButtonDisabled: {
+    opacity: 0.5,
+  },
   resendText: {
-    color: '#7CB342',
+    color: '#14b8a6',
     fontSize: 14,
     fontWeight: '600',
   },
   resendTextDisabled: {
-    color: '#999',
+    color: '#9ca3af',
   },
-  loginContainer: {
+  divider: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
-    paddingBottom: 30,
+    marginVertical: 16,
   },
-  loginText: {
-    color: '#666',
-    fontSize: 14,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#d1d5db',
   },
-  loginLink: {
-    color: '#7CB342',
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#9ca3af',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  loginButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#14b8a6',
+  },
+  loginButtonText: {
+    color: '#14b8a6',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 

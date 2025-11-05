@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import axios from "axios";
+import { useTheme } from "../contexts/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
@@ -56,6 +57,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
 });
 
 const Home = () => {
+  const { theme, colors } = useTheme();
   const [username, setUsername] = useState("Loading...");
   const [fullname, setFullname] = useState("Loading...");
   const [loading, setLoading] = useState(false);
@@ -66,6 +68,10 @@ const Home = () => {
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const statusCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const gradientColors: readonly [string, string, string] = theme === 'light'
+    ? ["#f0f9ff", "#e0f2fe", "#ddd6fe"]
+    : ["#0f172a", "#1e293b", "#334155"];
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -388,91 +394,116 @@ const Home = () => {
 
   return (
     <LinearGradient
-      colors={["#defcf9", "#cadefc", "#c3bef0", "#cca8e9"]}
+      colors={gradientColors}
       style={styles.container}
     >
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Image
-          source={require("../assets/images/bg1.png")}
-          style={styles.logo}
-        />
-        <Text style={styles.headerText}>Welcome, {fullname}</Text>
+      {/* STATUS BAR */}
+      <View style={[styles.statusBar, { backgroundColor: colors.card }]}>
+        <View style={styles.statusContent}>
+          <Image
+            source={require("../assets/images/bg1.png")}
+            style={styles.logo}
+          />
+          <View style={styles.userInfo}>
+            <Text style={[styles.greeting, { color: colors.textSecondary }]}>Hello,</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{fullname}</Text>
+          </View>
+        </View>
+        {sosActive && (
+          <View style={styles.activeIndicator}>
+            <View style={styles.activeDot} />
+            <Text style={styles.activeLabel}>Active</Text>
+          </View>
+        )}
       </View>
 
-      {/* SOS BUTTON */}
-      <View style={styles.sosContainer}>
-        <Animated.View
-          style={[
-            styles.sosButton,
-            {
-              transform: [{ scale: scaleAnim }],
-              backgroundColor: sosActive ? "#ff3b3b" : "#8c01c0",
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.sosTouchable}
-            onPress={handleSOS}
-            disabled={loading}
+      {/* MAIN CONTENT */}
+      <View style={styles.mainContent}>
+        {/* SOS BUTTON */}
+        <View style={styles.sosWrapper}>
+          <Animated.View
+            style={[
+              styles.sosButton,
+              sosActive && styles.sosButtonActive,
+              {
+                transform: [{ scale: scaleAnim }],
+              },
+            ]}
           >
-            {loading ? (
-              <ActivityIndicator size="large" color="#fff" />
-            ) : (
-              <>
-                <Text style={styles.sosText}>SOS</Text>
-                {sosActive && (
-                  <Text style={styles.activeText}>Active</Text>
-                )}
-              </>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-        
-        {sosActive && (
-          <View style={styles.trackingInfo}>
-            <Text style={styles.statusText}>
-              🚨 SOS Active - Location Tracking
-            </Text>
-            {lastUpdate && (
-              <Text style={styles.updateText}>
-                📍 {formatLastUpdate()}
+            <TouchableOpacity
+              style={styles.sosTouchable}
+              onPress={handleSOS}
+              disabled={loading}
+              activeOpacity={0.9}
+            >
+              {loading ? (
+                <ActivityIndicator size="large" color="#fff" />
+              ) : (
+                <View style={styles.sosContent}>
+                  <Ionicons
+                    name="alert-circle"
+                    size={70}
+                    color="#fff"
+                    style={styles.sosIcon}
+                  />
+                  <Text style={styles.sosText}>
+                    {sosActive ? "CANCEL" : "SOS"}
+                  </Text>
+                  <Text style={styles.sosSubtext}>
+                    {sosActive ? "Tap to stop" : "Emergency"}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+
+        {/* STATUS MESSAGE */}
+        {sosActive ? (
+          <View style={[styles.trackingCard, { backgroundColor: colors.card }]}>
+            <Ionicons name="radio-outline" size={24} color={colors.danger} />
+            <View style={styles.trackingContent}>
+              <Text style={[styles.trackingTitle, { color: colors.text }]}>Location Tracking Active</Text>
+              <Text style={[styles.trackingSubtitle, { color: colors.textSecondary }]}>
+                Emergency services notified • Updates every 1 min
               </Text>
-            )}
-            <Text style={styles.infoText}>
-              Updating every 1 minute
-            </Text>
-            <Text style={styles.cancelText}>
-              Tap button to cancel
+              {lastUpdate && (
+                <Text style={[styles.lastUpdate, { color: colors.textTertiary }]}>{formatLastUpdate()}</Text>
+              )}
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+            <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} />
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+              Tap the SOS button in case of emergency
             </Text>
           </View>
         )}
       </View>
 
       {/* BOTTOM NAV */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { backgroundColor: colors.card }]}>
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => router.push("/Account")}
         >
-          <Ionicons name="person-outline" size={30} color="white" />
-          <Text style={styles.navText}>Account</Text>
+          <View style={styles.navIconWrapper}>
+            <Ionicons name="person-outline" size={26} color={colors.textSecondary} />
+          </View>
+          <Text style={[styles.navText, { color: colors.textSecondary }]}>Profile</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => router.push("/Home")}
-        >
-          <Ionicons name="home-outline" size={30} color="white" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
+        <View style={[styles.navDivider, { backgroundColor: colors.border }]} />
 
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => router.push("/Chatlist")}
         >
-          <Ionicons name="call-outline" size={30} color="white" />
-          <Text style={styles.navText}>Contact</Text>
+          <View style={styles.navIconWrapper}>
+            <Ionicons name="chatbubbles-outline" size={26} color={colors.textSecondary} />
+          </View>
+          <Text style={[styles.navText, { color: colors.textSecondary }]}>Messages</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>
@@ -483,114 +514,210 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  // Top Status Bar
+  statusBar: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingTop: 50,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#8b5cf6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  statusContent: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#8c01c0",
-    marginTop: 20,
-    marginHorizontal: 20,
   },
   logo: {
-    width: 40,
-    height: 40,
-    marginRight: 10,
+    width: 48,
+    height: 48,
+    marginRight: 12,
     resizeMode: "contain",
   },
-  headerText: {
-    color: "#8c01c0",
-    fontSize: 18,
-    fontWeight: "bold",
+  userInfo: {
+    justifyContent: "center",
   },
-  sosContainer: {
+  greeting: {
+    fontSize: 14,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  userName: {
+    fontSize: 20,
+    color: "#1f2937",
+    fontWeight: "bold",
+    marginTop: 2,
+  },
+  activeIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fef2f2",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#fecaca",
+  },
+  activeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ef4444",
+    marginRight: 6,
+  },
+  activeLabel: {
+    fontSize: 12,
+    color: "#ef4444",
+    fontWeight: "700",
+  },
+  // Main Content
+  mainContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sosWrapper: {
+    marginBottom: 30,
+  },
+  sosButton: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "#14b8a6",
+    shadowColor: "#14b8a6",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  sosButtonActive: {
+    backgroundColor: "#ef4444",
+    shadowColor: "#ef4444",
+  },
+  sosTouchable: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 110,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sosContent: {
+    alignItems: "center",
+  },
+  sosIcon: {
+    marginBottom: 8,
+  },
+  sosText: {
+    fontSize: 48,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: 4,
+  },
+  sosSubtext: {
+    fontSize: 14,
+    color: "#fff",
+    opacity: 0.95,
+    marginTop: 4,
+    fontWeight: "600",
+  },
+  // Info Cards
+  trackingCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    padding: 20,
+    borderRadius: 18,
+    width: "100%",
+    borderLeftWidth: 4,
+    borderLeftColor: "#ef4444",
+    shadowColor: "#ef4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  trackingContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  trackingTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1f2937",
+    marginBottom: 4,
+  },
+  trackingSubtitle: {
+    fontSize: 13,
+    color: "#6b7280",
+    lineHeight: 18,
+  },
+  lastUpdate: {
+    fontSize: 12,
+    color: "#9ca3af",
+    marginTop: 8,
+  },
+  infoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    padding: 20,
+    borderRadius: 18,
+    width: "100%",
+    shadowColor: "#14b8a6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  infoText: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 20,
+  },
+  // Bottom Navigation
+  bottomNav: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.98)",
+    paddingTop: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 40,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    shadowColor: "#8b5cf6",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  navButton: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 8,
   },
-  sosButton: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
+  navIconWrapper: {
+    marginBottom: 4,
   },
-  sosTouchable: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    width: "100%",
-  },
-  sosText: {
-    fontSize: 75,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
-  activeText: {
-    fontSize: 18,
-    color: "#ffffff",
-    marginTop: 5,
-    fontWeight: "600",
-  },
-  trackingInfo: {
-    marginTop: 30,
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    padding: 15,
-    borderRadius: 15,
+  navDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: "#e5e7eb",
     marginHorizontal: 20,
   },
-  statusText: {
-    fontSize: 16,
-    color: "#ff3b3b",
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 5,
-  },
-  updateText: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 5,
-  },
-  infoText: {
-    fontSize: 13,
-    color: "#888",
-    marginTop: 5,
-  },
-  cancelText: {
-    fontSize: 13,
-    color: "#999",
-    marginTop: 8,
-    fontStyle: "italic",
-  },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 75,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    borderTopLeftRadius: 7,
-    borderTopRightRadius: 7,
-    elevation: 10,
-    backgroundColor: "#8c01c0",
-  },
-  navButton: {
-    alignItems: "center",
-  },
   navText: {
-    color: "white",
     fontSize: 12,
-    marginTop: 3,
+    color: "#6b7280",
+    marginTop: 4,
     fontWeight: "600",
   },
 });

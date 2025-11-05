@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  Image, 
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Image,
   Alert,
   Modal,
   ActivityIndicator,
@@ -17,6 +17,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Types
 interface UserProfile {
@@ -27,13 +28,12 @@ interface UserProfile {
   avatar: string;
 }
 
-type Theme = "light" | "dark";
-
 // Constants
-const ACCENT_COLOR = "#8c01c0";
+const ACCENT_COLOR = "#14b8a6";
 const API_BASE_URL = "http://192.168.100.6:10000/api";
 
 const Account: React.FC = () => {
+  const { theme, toggleTheme: toggleGlobalTheme, colors } = useTheme();
   // User Profile State
   const [profile, setProfile] = useState<UserProfile>({
     fullname: "",
@@ -65,7 +65,6 @@ const Account: React.FC = () => {
   });
 
   // UI State
-  const [theme, setTheme] = useState<Theme>("light");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -124,10 +123,6 @@ const Account: React.FC = () => {
         throw new Error(data.message || 'Failed to load profile');
       }
 
-      // Load theme
-      const storedTheme = await AsyncStorage.getItem('theme') as Theme;
-      if (storedTheme) setTheme(storedTheme);
-      
     } catch (error) {
       console.error('Failed to load user data:', error);
       Alert.alert("Error", "Failed to load profile data");
@@ -419,11 +414,9 @@ const Account: React.FC = () => {
   }, []);
 
   const toggleTheme = useCallback(async () => {
-    const newTheme: Theme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    await AsyncStorage.setItem('theme', newTheme);
+    toggleGlobalTheme();
     setMenuOpen(false);
-  }, [theme]);
+  }, [toggleGlobalTheme]);
 
   const toggleNotifications = useCallback(() => {
     setNotificationsEnabled(prev => !prev);

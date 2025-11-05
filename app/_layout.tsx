@@ -1,9 +1,12 @@
-const { Stack } = require("expo-router/stack");
+import { Stack } from "expo-router";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ 
-      headerShown: false 
-    }} />
+    <ThemeProvider>
+      <Stack screenOptions={{
+        headerShown: false
+      }} />
+    </ThemeProvider>
   );
 }

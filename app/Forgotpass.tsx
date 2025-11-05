@@ -5,13 +5,16 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
+  ScrollView,
+  Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = 'http://192.168.100.6:10000/api/auth';
 
@@ -70,142 +73,217 @@ const ForgotPass = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <LinearGradient
+      colors={["#f0f9ff", "#e0f2fe", "#ddd6fe"]}
+      style={styles.container}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, width: "100%" }}
       >
-        <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.innerContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header with Back Button */}
           <View style={styles.header}>
             <TouchableOpacity
-              onPress={() => router.back()}
               style={styles.backButton}
+              onPress={() => router.back()}
+              disabled={loading}
             >
-              <Text style={styles.backIcon}>←</Text>
+              <Ionicons name="arrow-back" size={24} color="#1f2937" />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.title}>Forgot Password</Text>
-          <Text style={styles.subtitle}>
-            Enter your email address and we'll send you a 6-digit code to reset your password.
-          </Text>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Your Email"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
+          {/* Logo and Title */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require("../assets/images/bg1.png")}
+              style={styles.logo}
+              resizeMode="contain"
             />
+            <Text style={styles.title}>Forgot Password?</Text>
+            <Text style={styles.subtitle}>
+              Enter your email and we'll send you a 6-digit code to reset your password
+            </Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.sendButton, loading && styles.sendButtonDisabled]}
-            onPress={handleSendEmail}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.sendButtonText}>Send Reset Code</Text>
-            )}
-          </TouchableOpacity>
+          {/* Input Field */}
+          <View style={styles.formContainer}>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email"
+                placeholderTextColor="#9ca3af"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+              />
+            </View>
 
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>Already have account? </Text>
-            <TouchableOpacity onPress={() => router.push('/')} disabled={loading}>
-              <Text style={styles.loginLink}>Log in</Text>
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSendEmail}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Text style={styles.buttonText}>Send Reset Code</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              onPress={() => router.push("/")}
+              disabled={loading}
+              style={styles.loginButton}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.loginButtonText}>Back to Sign In</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
-  keyboardView: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
+  innerContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 24,
   },
   header: {
-    paddingTop: 10,
-    paddingBottom: 20,
+    position: 'absolute',
+    top: 50,
+    left: 24,
+    zIndex: 10,
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  backIcon: {
-    fontSize: 24,
-    color: '#000',
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 10,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 30,
-    lineHeight: 20,
+    fontSize: 15,
+    color: '#6b7280',
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
-  inputContainer: {
-    marginBottom: 20,
+  formContainer: {
+    width: '100%',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    shadowColor: '#14b8a6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 25,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    flex: 1,
+    paddingVertical: 14,
     fontSize: 16,
-    color: '#000',
+    color: '#1f2937',
   },
-  sendButton: {
-    backgroundColor: '#7CB342',
-    borderRadius: 25,
+  button: {
+    backgroundColor: '#14b8a6',
     paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    opacity: 0.7,
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  loginContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    shadowColor: '#14b8a6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  divider: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 'auto',
-    paddingBottom: 30,
+    marginVertical: 24,
   },
-  loginText: {
-    color: '#666',
-    fontSize: 14,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#d1d5db',
   },
-  loginLink: {
-    color: '#7CB342',
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#9ca3af',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  loginButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#14b8a6',
+  },
+  loginButtonText: {
+    color: '#14b8a6',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 
