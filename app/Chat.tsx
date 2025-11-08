@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,8 @@ import axios from "axios";
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const API_BASE = "http://192.168.100.6:10000"; // Your computer's IP address
 
@@ -40,13 +43,15 @@ interface Message {
 
 interface MessageItemProps {
   message: Message;
+  theme: string;
+  colors: any;
 }
 
 // ============================================
 // MESSAGE ITEM COMPONENT
 // ============================================
 
-const MessageItem: React.FC<MessageItemProps> = React.memo(({ message }) => {
+const MessageItem: React.FC<MessageItemProps> = React.memo(({ message, theme, colors }) => {
   const formatTime = (date: string) => {
     return new Date(date).toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -67,7 +72,7 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ message }) => {
     <View
       style={[
         styles.messageContainer,
-        isUser ? styles.userMessage : styles.supportMessage,
+        isUser ? styles.userMessage : { backgroundColor: colors.card, borderWidth: 1, borderColor: theme === 'dark' ? colors.border : '#e0e0e0' },
       ]}
     >
       {/* Image Message */}
@@ -90,7 +95,7 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ message }) => {
             />
           ) : (
             <View style={[styles.messageImage, styles.videoPlaceholder]}>
-              <Ionicons name="videocam" size={48} color="#fff" />
+              <Ionicons name="videocam" size={48} color={colors.textSecondary} />
             </View>
           )}
           <View style={styles.videoOverlay}>
@@ -109,25 +114,25 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ message }) => {
       {/* Audio Message */}
       {message.messageType === 'audio' && (
         <View style={styles.audioContainer}>
-          <Ionicons name="mic" size={24} color={isUser ? "#fff" : "#7e57c2"} />
+          <Ionicons name="mic" size={24} color={isUser ? "#fff" : "#14b8a6"} />
           <View style={styles.audioInfo}>
-            <Text style={[styles.audioLabel, isUser && styles.userMessageText]}>
+            <Text style={[{ fontSize: 14, fontWeight: '600', color: colors.text }, isUser && styles.userMessageText]}>
               Voice message
             </Text>
             {message.mediaDuration && (
-              <Text style={[styles.audioDuration, isUser && styles.userMessageText]}>
+              <Text style={[{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }, isUser && styles.userMessageText]}>
                 {formatDuration(message.mediaDuration)}
               </Text>
             )}
           </View>
-          <Ionicons name="play" size={20} color={isUser ? "#fff" : "#7e57c2"} />
+          <Ionicons name="play" size={20} color={isUser ? "#fff" : "#14b8a6"} />
         </View>
       )}
 
       {/* Text (caption for media or standalone text) */}
       {message.text && (
         <Text style={[
-          styles.messageText,
+          { fontSize: 15, color: colors.text, lineHeight: 20 },
           isUser && styles.userMessageText,
           message.messageType !== 'text' && styles.captionText
         ]}>
@@ -136,7 +141,7 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ message }) => {
       )}
 
       <Text style={[
-        styles.timestamp,
+        { fontSize: 11, color: colors.textTertiary, marginTop: 4, alignSelf: 'flex-end' },
         isUser && styles.userTimestamp
       ]}>
         {formatTime(message.createdAt)}
@@ -152,6 +157,8 @@ MessageItem.displayName = 'MessageItem';
 // ============================================
 
 const Chat: React.FC = () => {
+  const { theme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { conversationId, adminName } = useLocalSearchParams<{
     conversationId: string;
     adminName: string;
@@ -167,9 +174,9 @@ const Chat: React.FC = () => {
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
-  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const pollingInterval = useRef<number | null>(null);
   const audioRecording = useRef<Audio.Recording | null>(null);
-  const recordingInterval = useRef<NodeJS.Timeout | null>(null);
+  const recordingInterval = useRef<number | null>(null);
 
   // ============================================
   // INITIALIZATION
@@ -183,9 +190,6 @@ const Chat: React.FC = () => {
     pollingInterval.current = setInterval(() => {
       fetchMessages();
     }, 5000);
-
-    // Request audio permissions on mount
-    requestAudioPermissions();
 
     return () => {
       if (pollingInterval.current) {
@@ -293,6 +297,15 @@ const Chat: React.FC = () => {
         if (mediaSize) payload.mediaSize = mediaSize;
       }
 
+      console.log('Sending message payload:', {
+        conversationId: payload.conversationId,
+        messageType: payload.messageType,
+        mediaDuration: payload.mediaDuration,
+        mediaSize: payload.mediaSize,
+        mediaDataLength: payload.mediaData ? payload.mediaData.length : 0,
+        mediaDataPrefix: payload.mediaData ? payload.mediaData.substring(0, 50) : null,
+      });
+
       const response = await axios.post(
         `${API_BASE}/api/messages/send`,
         payload,
@@ -312,6 +325,10 @@ const Chat: React.FC = () => {
       setSending(false);
     } catch (error: any) {
       console.error('Error sending message:', error);
+      console.error('Error response status:', error.response?.status);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error message:', error.message);
+
       setSending(false);
       if (messageType === 'text') {
         setInput(trimmedInput); // Restore input on error for text messages
@@ -320,8 +337,13 @@ const Chat: React.FC = () => {
       if (error.response?.status === 401) {
         await AsyncStorage.multiRemove(['token', 'username']);
         router.replace('/');
+      } else if (error.response?.status === 413) {
+        Alert.alert('File Too Large', 'The file you are trying to send is too large. Please try a smaller file or compress it.');
+      } else if (error.response?.status === 500) {
+        const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Server error occurred';
+        Alert.alert('Server Error', `The server encountered an error: ${errorMsg}`);
       } else {
-        Alert.alert('Error', 'Failed to send message. Please try again.');
+        Alert.alert('Error', `Failed to send message: ${error.message || 'Please try again.'}`);
       }
     }
   }, [input, sending, conversationId, router]);
@@ -330,16 +352,7 @@ const Chat: React.FC = () => {
   // MEDIA FUNCTIONS
   // ============================================
 
-  const requestAudioPermissions = async () => {
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        console.log('Microphone permission denied');
-      }
-    } catch (error) {
-      console.error('Error requesting audio permissions:', error);
-    }
-  };
+  // Audio recording functions using expo-av
 
   const pickImage = async () => {
     try {
@@ -359,14 +372,64 @@ const Chat: React.FC = () => {
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        const base64 = `data:image/jpeg;base64,${asset.base64}`;
         const size = asset.fileSize || 0;
+
+        // Check file size before processing (5MB limit for images)
+        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+        if (size > maxSize) {
+          Alert.alert(
+            'File Too Large',
+            `Image size is ${(size / (1024 * 1024)).toFixed(2)}MB. Please select an image smaller than 5MB.`
+          );
+          return;
+        }
+
+        const base64 = `data:image/jpeg;base64,${asset.base64}`;
 
         await sendMessage('image', base64, undefined, size);
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image');
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please enable camera permissions to take photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const size = asset.fileSize || 0;
+
+        // Check file size before processing (5MB limit for images)
+        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+        if (size > maxSize) {
+          Alert.alert(
+            'File Too Large',
+            `Photo size is ${(size / (1024 * 1024)).toFixed(2)}MB. Please try a lower quality or compress it.`
+          );
+          return;
+        }
+
+        const base64 = `data:image/jpeg;base64,${asset.base64}`;
+
+        await sendMessage('image', base64, undefined, size);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
 
@@ -381,11 +444,25 @@ const Chat: React.FC = () => {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        quality: 0.7,
+        quality: 0.3, // Lower quality to reduce file size
       });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
+        const size = asset.fileSize || 0;
+
+        // Check file size before processing (10MB limit for videos)
+        const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        if (size > maxSize) {
+          Alert.alert(
+            'File Too Large',
+            `Video size is ${(size / (1024 * 1024)).toFixed(2)}MB. Please select a video smaller than 10MB or compress it first.`
+          );
+          return;
+        }
+
+        // Show loading indicator for large files
+        Alert.alert('Uploading', 'Please wait while your video is being processed...');
 
         // Read video file as base64
         const base64 = await FileSystem.readAsStringAsync(asset.uri, {
@@ -394,13 +471,12 @@ const Chat: React.FC = () => {
 
         const dataUri = `data:video/mp4;base64,${base64}`;
         const duration = asset.duration || 0;
-        const size = asset.fileSize || 0;
 
         await sendMessage('video', dataUri, duration / 1000, size); // Convert ms to seconds
       }
     } catch (error) {
       console.error('Error picking video:', error);
-      Alert.alert('Error', 'Failed to pick video');
+      Alert.alert('Error', 'Failed to pick video. Please try again.');
     }
   };
 
@@ -408,7 +484,7 @@ const Chat: React.FC = () => {
     try {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please enable microphone permissions.');
+        Alert.alert('Permission Denied', 'Please enable microphone permissions to record audio.');
         return;
       }
 
@@ -417,39 +493,50 @@ const Chat: React.FC = () => {
         playsInSilentModeIOS: true,
       });
 
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await recording.startAsync();
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
 
       audioRecording.current = recording;
       setRecording(true);
       setRecordingTime(0);
 
-      // Update recording time every second
       recordingInterval.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting recording:', error);
-      Alert.alert('Error', 'Failed to start recording');
+      Alert.alert('Error', 'Failed to start recording. Please try again.');
+      setRecording(false);
+      setRecordingTime(0);
     }
   };
 
   const stopRecording = async () => {
     try {
-      if (!audioRecording.current) return;
-
-      setRecording(false);
       if (recordingInterval.current) {
         clearInterval(recordingInterval.current);
+        recordingInterval.current = null;
+      }
+
+      if (!audioRecording.current) {
+        Alert.alert('Error', 'No active recording found.');
+        setRecording(false);
+        setRecordingTime(0);
+        return;
       }
 
       await audioRecording.current.stopAndUnloadAsync();
       const uri = audioRecording.current.getURI();
 
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+
+      setRecording(false);
+
       if (uri) {
-        // Read audio file as base64
         const base64 = await FileSystem.readAsStringAsync(uri, {
           encoding: 'base64',
         });
@@ -459,31 +546,48 @@ const Chat: React.FC = () => {
         const size = fileInfo.exists ? fileInfo.size : 0;
 
         await sendMessage('audio', dataUri, recordingTime, size);
+      } else {
+        Alert.alert('Error', 'Failed to save recording.');
       }
 
       audioRecording.current = null;
       setRecordingTime(0);
-    } catch (error) {
+
+    } catch (error: any) {
       console.error('Error stopping recording:', error);
-      Alert.alert('Error', 'Failed to stop recording');
+      Alert.alert('Error', 'Failed to process recording. Please try again.');
       setRecording(false);
       setRecordingTime(0);
+      audioRecording.current = null;
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+        recordingInterval.current = null;
+      }
     }
   };
 
   const cancelRecording = async () => {
     try {
-      if (audioRecording.current) {
-        await audioRecording.current.stopAndUnloadAsync();
-        audioRecording.current = null;
-      }
-      setRecording(false);
-      setRecordingTime(0);
       if (recordingInterval.current) {
         clearInterval(recordingInterval.current);
+        recordingInterval.current = null;
       }
+
+      if (audioRecording.current) {
+        await audioRecording.current.stopAndUnloadAsync();
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+        });
+        audioRecording.current = null;
+      }
+
+      setRecording(false);
+      setRecordingTime(0);
     } catch (error) {
       console.error('Error canceling recording:', error);
+      setRecording(false);
+      setRecordingTime(0);
+      audioRecording.current = null;
     }
   };
 
@@ -491,6 +595,54 @@ const Chat: React.FC = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // ============================================
+  // CALL FUNCTIONALITY
+  // ============================================
+
+  const handleCall = async () => {
+    try {
+      // Emergency hotline number for ResqYOU
+      const emergencyNumber = '911'; // Default emergency number
+
+      Alert.alert(
+        'Make a Call',
+        `Call emergency services or ResqYOU respondent?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Emergency (911)',
+            onPress: async () => {
+              const phoneUrl = `tel:${emergencyNumber}`;
+              const canOpen = await Linking.canOpenURL(phoneUrl);
+
+              if (canOpen) {
+                await Linking.openURL(phoneUrl);
+              } else {
+                Alert.alert('Error', 'Unable to make phone calls on this device.');
+              }
+            }
+          },
+          {
+            text: 'Respondent',
+            onPress: () => {
+              Alert.alert(
+                'Contact Respondent',
+                'Voice calling with respondents will be available soon. For now, please use the emergency hotline or continue chatting.',
+                [{ text: 'OK' }]
+              );
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error initiating call:', error);
+      Alert.alert('Error', 'Failed to initiate call. Please try again.');
+    }
   };
 
   // ============================================
@@ -502,8 +654,8 @@ const Chat: React.FC = () => {
   }, [router]);
 
   const renderItem = useCallback(({ item }: { item: Message }) => (
-    <MessageItem message={item} />
-  ), []);
+    <MessageItem message={item} theme={theme} colors={colors} />
+  ), [theme, colors]);
 
   const keyExtractor = useCallback((item: Message) => item._id, []);
 
@@ -514,9 +666,9 @@ const Chat: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="chatbubble-ellipses-outline" size={64} color="#d1d5db" />
-      <Text style={styles.emptyText}>No messages yet</Text>
-      <Text style={styles.emptySubtext}>Start the conversation by sending a message</Text>
+      <Ionicons name="chatbubble-ellipses-outline" size={64} color={colors.textTertiary} />
+      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No messages yet</Text>
+      <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>Start the conversation by sending a message</Text>
     </View>
   );
 
@@ -526,21 +678,21 @@ const Chat: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#7e57c2" />
-        <Text style={styles.loadingText}>Loading messages...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading messages...</Text>
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme === 'dark' ? colors.background : '#f0fdfa' }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.card, paddingTop: Math.max(insets.top + 12, 50) }]}>
         <TouchableOpacity
           onPress={handleBackPress}
           style={styles.headerBack}
@@ -548,15 +700,23 @@ const Chat: React.FC = () => {
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{adminName || 'ResqYOU Respondents'}</Text>
-          <Text style={styles.headerStatus}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{adminName || 'ResqYOU Respondents'}</Text>
+          <Text style={[styles.headerStatus, { color: colors.textSecondary }]}>
             {messages.length > 0 ? 'Active' : 'Start conversation'}
           </Text>
         </View>
-        <View style={styles.headerRight} />
+        <TouchableOpacity
+          onPress={handleCall}
+          style={styles.headerRight}
+          accessible={true}
+          accessibilityLabel="Call emergency or respondent"
+          accessibilityRole="button"
+        >
+          <Ionicons name="call" size={24} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Messages List */}
@@ -565,7 +725,7 @@ const Chat: React.FC = () => {
         data={messages}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        contentContainerStyle={messages.length === 0 ? styles.emptyListContent : styles.chatListContent}
+        contentContainerStyle={messages.length === 0 ? [styles.emptyListContent, { paddingBottom: 20 }] : [styles.chatListContent, { paddingBottom: 20 }]}
         style={styles.chatList}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -575,40 +735,43 @@ const Chat: React.FC = () => {
       {/* Input Container */}
       {recording ? (
         /* Recording UI */
-        <View style={styles.recordingContainer}>
+        <View style={[styles.recordingContainer, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
           <TouchableOpacity onPress={cancelRecording} style={styles.cancelButton}>
             <Ionicons name="trash" size={24} color="#ff4444" />
           </TouchableOpacity>
           <View style={styles.recordingIndicator}>
             <View style={styles.recordingDot} />
-            <Text style={styles.recordingText}>{formatRecordingTime(recordingTime)}</Text>
+            <Text style={[styles.recordingText, { color: colors.text }]}>{formatRecordingTime(recordingTime)}</Text>
           </View>
           <TouchableOpacity onPress={stopRecording} style={styles.stopButton}>
-            <Ionicons name="send" size={24} color="#7e57c2" />
+            <Ionicons name="send" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
       ) : (
         /* Normal Input UI */
-        <View style={styles.inputWrapper}>
+        <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
           {/* Attachment Buttons */}
-          <View style={styles.attachmentBar}>
+          <View style={[styles.attachmentBar, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={takePhoto} style={styles.attachmentButton}>
+              <Ionicons name="camera" size={24} color={colors.primary} />
+            </TouchableOpacity>
             <TouchableOpacity onPress={pickImage} style={styles.attachmentButton}>
-              <Ionicons name="image" size={24} color="#7e57c2" />
+              <Ionicons name="image" size={24} color={colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity onPress={pickVideo} style={styles.attachmentButton}>
-              <Ionicons name="videocam" size={24} color="#7e57c2" />
+              <Ionicons name="videocam" size={24} color={colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity onPress={startRecording} style={styles.attachmentButton}>
-              <Ionicons name="mic" size={24} color="#7e57c2" />
+              <Ionicons name="mic" size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.inputContainer}>
             <TextInput
               ref={inputRef}
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
               placeholder="Type your message..."
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.placeholder}
               value={input}
               onChangeText={setInput}
               onSubmitEditing={handleInputSubmit}
@@ -620,7 +783,7 @@ const Chat: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                (!input.trim() || sending) && styles.sendButtonDisabled
+                { backgroundColor: input.trim() && !sending ? '#14b8a6' : colors.border }
               ]}
               onPress={() => sendMessage('text')}
               disabled={!input.trim() || sending}
@@ -632,7 +795,7 @@ const Chat: React.FC = () => {
                 <Ionicons
                   name="send"
                   size={20}
-                  color={input.trim() && !sending ? "#fff" : "#ccc"}
+                  color={input.trim() && !sending ? "#fff" : colors.textTertiary}
                 />
               )}
             </TouchableOpacity>
@@ -646,24 +809,20 @@ const Chat: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5'
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#7e57c2',
     paddingVertical: 12,
     paddingHorizontal: 10,
     elevation: 4,
@@ -681,17 +840,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
   headerStatus: {
-    color: '#e0e0e0',
     fontSize: 12,
     marginTop: 2,
   },
   headerRight: {
     width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chatList: {
     flex: 1,
@@ -714,12 +874,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
     marginTop: 8,
     textAlign: 'center',
   },
@@ -732,18 +890,7 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#7e57c2',
-  },
-  supportMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  messageText: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 20,
+    backgroundColor: '#14b8a6',
   },
   userMessageText: {
     color: '#fff',
@@ -799,29 +946,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 12,
   },
-  audioLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  audioDuration: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  timestamp: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
   userTimestamp: {
     color: '#e0e0e0',
   },
   inputWrapper: {
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
     paddingBottom: Platform.OS === 'ios' ? 20 : 10,
   },
   attachmentBar: {
@@ -829,7 +958,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   attachmentButton: {
     padding: 8,
@@ -845,33 +973,25 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     maxHeight: 100,
-    backgroundColor: '#f5f5f5',
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#333',
     marginRight: 10,
   },
   sendButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#7e57c2',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 0,
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#e0e0e0',
   },
   recordingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
     paddingHorizontal: 20,
     paddingVertical: 15,
     paddingBottom: Platform.OS === 'ios' ? 30 : 15,
@@ -892,7 +1012,6 @@ const styles = StyleSheet.create({
   recordingText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
   cancelButton: {
     padding: 10,

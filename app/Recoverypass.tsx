@@ -10,18 +10,21 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const API_URL = 'http://192.168.100.6:10000/api/auth';
 
 const RecoveryPass = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+  const { theme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
   const [email, setEmail] = useState((params?.email as string) || '');
   const [resetCode, setResetCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -136,9 +139,13 @@ const RecoveryPass = () => {
     }
   };
 
+  const gradientColors = theme === 'light'
+    ? ["#f0fdfa", "#ccfbf1", "#99f6e4"]
+    : ["#0f172a", "#1e293b", "#334155"];
+
   return (
     <LinearGradient
-      colors={["#f0f9ff", "#e0f2fe", "#ddd6fe"]}
+      colors={gradientColors}
       style={styles.container}
     >
       <KeyboardAvoidingView
@@ -146,7 +153,7 @@ const RecoveryPass = () => {
         style={{ flex: 1, width: "100%" }}
       >
         <ScrollView
-          contentContainerStyle={styles.innerContainer}
+          contentContainerStyle={[styles.innerContainer, { paddingTop: Math.max(insets.top + 20, 60), paddingBottom: Math.max(insets.bottom + 20, 40) }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -157,19 +164,14 @@ const RecoveryPass = () => {
               onPress={() => router.back()}
               disabled={loading}
             >
-              <Ionicons name="arrow-back" size={24} color="#1f2937" />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
-          {/* Logo and Title */}
+          {/* Title */}
           <View style={styles.logoContainer}>
-            <Image
-              source={require("../assets/images/bg1.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={styles.title}>Reset Password</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.text }]}>Reset Password</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Enter the 6-digit code sent to your email and create a new password
             </Text>
           </View>
@@ -194,14 +196,14 @@ const RecoveryPass = () => {
           {/* Input Fields */}
           <View style={styles.formContainer}>
             {!params?.email && (
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
+              <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+                <Ionicons name="mail-outline" size={20} color={colors.primary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="Email"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.placeholder}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -210,28 +212,28 @@ const RecoveryPass = () => {
               </View>
             )}
 
-            <View style={styles.inputWrapper}>
-              <Ionicons name="key-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
+            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+              <Ionicons name="key-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 value={resetCode}
                 onChangeText={(text) => setResetCode(text.replace(/[^0-9]/g, ''))}
                 placeholder="6-Digit Reset Code"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.placeholder}
                 keyboardType="number-pad"
                 maxLength={6}
                 editable={!loading}
               />
             </View>
 
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
+            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 value={newPassword}
                 onChangeText={setNewPassword}
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="New Password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.placeholder}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 editable={!loading}
@@ -244,19 +246,19 @@ const RecoveryPass = () => {
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color="#6b7280"
+                  color={colors.textSecondary}
                 />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#14b8a6" style={styles.inputIcon} />
+            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Confirm Password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.placeholder}
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 editable={!loading}
@@ -269,14 +271,14 @@ const RecoveryPass = () => {
                 <Ionicons
                   name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color="#6b7280"
+                  color={colors.textSecondary}
                 />
               </TouchableOpacity>
             </View>
 
             <View style={styles.passwordHintContainer}>
-              <Text style={styles.passwordHint}>• Password must be at least 6 characters</Text>
-              <Text style={styles.passwordHint}>• Passwords must match</Text>
+              <Text style={[styles.passwordHint, { color: colors.textSecondary }]}>• Password must be at least 6 characters</Text>
+              <Text style={[styles.passwordHint, { color: colors.textSecondary }]}>• Passwords must match</Text>
             </View>
 
             <TouchableOpacity
@@ -307,15 +309,15 @@ const RecoveryPass = () => {
             </TouchableOpacity>
 
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />
+              <Text style={[styles.dividerText, { color: colors.placeholder }]}>or</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.inputBorder }]} />
             </View>
 
             <TouchableOpacity
               onPress={() => router.push("/")}
               disabled={loading}
-              style={styles.loginButton}
+              style={[styles.loginButton, { backgroundColor: colors.input }]}
               activeOpacity={0.8}
             >
               <Text style={styles.loginButtonText}>Back to Sign In</Text>
@@ -351,21 +353,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 16,
-  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
-    color: '#6b7280',
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 22,
@@ -405,11 +400,11 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 4,
+    borderWidth: 1,
     shadowColor: '#14b8a6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -423,7 +418,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1f2937',
   },
   eyeIcon: {
     padding: 8,
@@ -434,7 +428,6 @@ const styles = StyleSheet.create({
   },
   passwordHint: {
     fontSize: 12,
-    color: '#6b7280',
     lineHeight: 18,
   },
   button: {
@@ -481,16 +474,13 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#d1d5db',
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#9ca3af',
     fontSize: 14,
     fontWeight: '500',
   },
   loginButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',

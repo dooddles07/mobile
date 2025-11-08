@@ -41,7 +41,7 @@ export const Colors = {
 
   // Gradients
   gradients: {
-    background: ['#f0f9ff', '#e0f2fe', '#ddd6fe'],
+    background: ['#f0fdfa', '#ccfbf1', '#99f6e4'],
     primary: ['#14b8a6', '#0d9488'],
     danger: ['#ef4444', '#dc2626'],
   },

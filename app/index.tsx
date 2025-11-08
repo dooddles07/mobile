@@ -17,11 +17,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const API_URL = "http://192.168.100.6:10000/api/auth"; // Your computer's IP address
 
 const LoginScreen = () => {
   const { theme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -61,7 +63,7 @@ const LoginScreen = () => {
   };
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
-    ? ["#f0f9ff", "#e0f2fe", "#ddd6fe"]
+    ? ["#f0fdfa", "#ccfbf1", "#99f6e4"]
     : ["#0f172a", "#1e293b", "#334155"];
 
   return (
@@ -74,7 +76,7 @@ const LoginScreen = () => {
         style={{ flex: 1, width: "100%" }}
       >
         <ScrollView
-          contentContainerStyle={styles.innerContainer}
+          contentContainerStyle={[styles.innerContainer, { paddingTop: Math.max(insets.top + 20, 60), paddingBottom: Math.max(insets.bottom + 20, 40) }]}
           showsVerticalScrollIndicator={false}
         >
           {/* Logo and Title */}
@@ -150,20 +152,52 @@ const LoginScreen = () => {
               )}
             </TouchableOpacity>
 
-            <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.textTertiary }]}>or</Text>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <View style={styles.registerContainer}>
+              <Text style={[styles.registerText, { color: colors.textSecondary }]}>
+                Don't have an account?{' '}
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push("/Register")}
+                disabled={isLoading}
+              >
+                <Text style={[styles.registerLink, { color: colors.primary }]}>
+                  Register
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              onPress={() => router.push("/Register")}
-              disabled={isLoading}
-              style={[styles.registerButton, { backgroundColor: colors.input, borderColor: colors.primary }]}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.registerButtonText, { color: colors.primary }]}>Create New Account</Text>
-            </TouchableOpacity>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Social Login Buttons */}
+            <View style={styles.socialButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.7}
+                disabled={isLoading}
+              >
+                <Ionicons name="logo-google" size={24} color="#DB4437" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.7}
+                disabled={isLoading}
+              >
+                <Ionicons name="logo-facebook" size={24} color="#1877F2" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                activeOpacity={0.7}
+                disabled={isLoading}
+              >
+                <Ionicons name="logo-apple" size={24} color="#000000" />
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -254,29 +288,52 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
   },
+  registerContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 24,
+  },
+  registerText: {
+    fontSize: 15,
+  },
+  registerLink: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 24,
+    marginVertical: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
+    backgroundColor: "#d1d5db",
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
     fontWeight: "500",
   },
-  registerButton: {
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    borderWidth: 2,
+  socialButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 16,
+    marginTop: 4,
   },
-  registerButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
+  socialButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
 

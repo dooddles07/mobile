@@ -4,6 +4,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { useTheme } from "../contexts/ThemeContext";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const API_BASE = "http://192.168.100.6:10000"; // Your computer's IP address
 
@@ -28,6 +30,8 @@ interface ChatListItemProps {
 // ============================================
 
 const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ conversation, onPress }) => {
+  const { theme, colors } = useTheme();
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -48,25 +52,30 @@ const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ conversation, on
     <TouchableOpacity
       style={[
         styles.chatCard,
-        conversation.unreadCountUser > 0 && styles.unreadCard
+        { backgroundColor: colors.card },
+        conversation.unreadCountUser > 0 && {
+          backgroundColor: colors.cardHighlight,
+          borderLeftWidth: 4,
+          borderLeftColor: colors.primary
+        }
       ]}
       onPress={() => onPress(conversation)}
       activeOpacity={0.7}
     >
       <View style={styles.chatHeader}>
         <View style={styles.chatNameContainer}>
-          <Text style={styles.chatName}>
+          <Text style={[styles.chatName, { color: colors.text }]}>
             {conversation.adminName || 'ResqYOU Support'}
           </Text>
           {conversation.unreadCountUser > 0 && (
-            <View style={styles.unreadBadge}>
+            <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
               <Text style={styles.unreadBadgeText}>{conversation.unreadCountUser}</Text>
             </View>
           )}
         </View>
-        <Text style={styles.timestamp}>{formatTime(conversation.lastMessageTime)}</Text>
+        <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{formatTime(conversation.lastMessageTime)}</Text>
       </View>
-      <Text style={styles.lastMessage} numberOfLines={1}>
+      <Text style={[styles.lastMessage, { color: colors.textSecondary }]} numberOfLines={1}>
         {conversation.lastMessage || 'No messages yet'}
       </Text>
       {conversation.status === 'archived' && (
@@ -84,6 +93,8 @@ ChatListItem.displayName = 'ChatListItem';
 
 const ChatList: React.FC = () => {
   const router = useRouter();
+  const { theme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,11 +285,11 @@ const ChatList: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="chatbubbles-outline" size={64} color="#d1d5db" />
-      <Text style={styles.emptyText}>No conversations yet</Text>
-      <Text style={styles.emptySubtext}>Start a conversation with ResqYOU support</Text>
+      <Ionicons name="chatbubbles-outline" size={64} color={colors.borderLight} />
+      <Text style={[styles.emptyText, { color: colors.text }]}>No conversations yet</Text>
+      <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>Start a conversation with ResqYOU support</Text>
       <TouchableOpacity
-        style={styles.startChatButton}
+        style={[styles.startChatButton, { backgroundColor: colors.primary }]}
         onPress={handleStartNewChat}
       >
         <Ionicons name="add-circle" size={24} color="#fff" />
@@ -293,17 +304,17 @@ const ChatList: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#14b8a6" />
-        <Text style={styles.loadingText}>Loading conversations...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading conversations...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: Math.max(insets.top + 10, 50) }]}>
         <TouchableOpacity
           onPress={handleBackPress}
           style={styles.headerBack}
@@ -332,15 +343,15 @@ const ChatList: React.FC = () => {
         data={conversations}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        contentContainerStyle={conversations.length === 0 ? styles.emptyListContent : styles.listContent}
+        contentContainerStyle={conversations.length === 0 ? [styles.emptyListContent, { paddingBottom: Math.max(insets.bottom + 10, 20) }] : [styles.listContent, { paddingBottom: Math.max(insets.bottom + 10, 20) }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmpty}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#14b8a6']}
-            tintColor="#14b8a6"
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
       />
@@ -351,29 +362,25 @@ const ChatList: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f0f9ff"
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: "#f0f9ff"
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#6b7280",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#14b8a6",
     paddingTop: 50,
     paddingBottom: 16,
     paddingHorizontal: 16,
     elevation: 4,
-    shadowColor: "#14b8a6",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -409,19 +416,13 @@ const styles = StyleSheet.create({
   chatCard: {
     padding: 16,
     borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     marginHorizontal: 16,
     marginBottom: 12,
     elevation: 2,
-    shadowColor: "#14b8a6",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-  },
-  unreadCard: {
-    backgroundColor: "rgba(224, 242, 254, 0.95)",
-    borderLeftWidth: 4,
-    borderLeftColor: "#14b8a6",
   },
   chatHeader: {
     flexDirection: "row",
@@ -437,10 +438,8 @@ const styles = StyleSheet.create({
   chatName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#1f2937",
   },
   unreadBadge: {
-    backgroundColor: '#14b8a6',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -456,12 +455,10 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
-    color: "#9ca3af",
     marginLeft: 8,
   },
   lastMessage: {
     fontSize: 14,
-    color: "#6b7280",
     marginTop: 4,
   },
   archivedText: {
@@ -480,25 +477,22 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: "#1f2937",
     marginTop: 15,
     marginBottom: 5,
   },
   emptySubtext: {
     fontSize: 14,
-    color: "#6b7280",
     textAlign: 'center',
     marginBottom: 20,
   },
   startChatButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#14b8a6',
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 16,
     elevation: 3,
-    shadowColor: '#14b8a6',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

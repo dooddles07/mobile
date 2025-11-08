@@ -7,8 +7,10 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  Image,
   Dimensions,
+  Image,
+  ScrollView,
+  Linking,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,6 +20,7 @@ import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import axios from "axios";
 import { useTheme } from "../contexts/ThemeContext";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get("window");
 
@@ -58,8 +61,10 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
 
 const Home = () => {
   const { theme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [username, setUsername] = useState("Loading...");
   const [fullname, setFullname] = useState("Loading...");
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sosActive, setSosActive] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -70,7 +75,7 @@ const Home = () => {
   const statusCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
-    ? ["#f0f9ff", "#e0f2fe", "#ddd6fe"]
+    ? ["#f0fdfa", "#ccfbf1", "#99f6e4"]
     : ["#0f172a", "#1e293b", "#334155"];
 
   useEffect(() => {
@@ -78,9 +83,11 @@ const Home = () => {
       try {
         const storedUsername = await AsyncStorage.getItem("username");
         const storedFullname = await AsyncStorage.getItem("fullname");
+        const storedAvatar = await AsyncStorage.getItem("avatar");
 
         setUsername(storedUsername || "Guest");
         setFullname(storedFullname || storedUsername || "Guest");
+        setAvatar(storedAvatar);
 
         // Check if user has active SOS on app start
         if (storedUsername) {
@@ -398,12 +405,18 @@ const Home = () => {
       style={styles.container}
     >
       {/* STATUS BAR */}
-      <View style={[styles.statusBar, { backgroundColor: colors.card }]}>
+      <View style={[styles.statusBar, { backgroundColor: colors.card, paddingTop: Math.max(insets.top, 50) }]}>
         <View style={styles.statusContent}>
-          <Image
-            source={require("../assets/images/bg1.png")}
-            style={styles.logo}
-          />
+          <View style={styles.avatarCircle}>
+            {avatar ? (
+              <Image
+                source={{ uri: avatar }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Ionicons name="person" size={24} color={colors.primary} />
+            )}
+          </View>
           <View style={styles.userInfo}>
             <Text style={[styles.greeting, { color: colors.textSecondary }]}>Hello,</Text>
             <Text style={[styles.userName, { color: colors.text }]}>{fullname}</Text>
@@ -418,7 +431,11 @@ const Home = () => {
       </View>
 
       {/* MAIN CONTENT */}
-      <View style={styles.mainContent}>
+      <ScrollView
+        style={styles.mainContent}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* SOS BUTTON */}
         <View style={styles.sosWrapper}>
           <Animated.View
@@ -442,7 +459,7 @@ const Home = () => {
                 <View style={styles.sosContent}>
                   <Ionicons
                     name="alert-circle"
-                    size={70}
+                    size={50}
                     color="#fff"
                     style={styles.sosIcon}
                   />
@@ -476,20 +493,149 @@ const Home = () => {
           <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
             <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} />
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              Tap the SOS button in case of emergency
+              You're protected. Tap SOS in case of emergency
             </Text>
           </View>
         )}
-      </View>
+
+        {/* QUICK ACTIONS */}
+        <View style={styles.quickActionsSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+
+          <View style={styles.quickActionsGrid}>
+            {/* Emergency Contacts */}
+            <TouchableOpacity
+              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              activeOpacity={0.7}
+              onPress={() => router.push('/EmergencyHotline')}
+            >
+              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                <Ionicons name="call" size={24} color="#ef4444" />
+              </View>
+              <Text style={[styles.actionCardTitle, { color: colors.text }]}>Emergency</Text>
+              <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>Hotline</Text>
+            </TouchableOpacity>
+
+            {/* Safety Tips */}
+            <TouchableOpacity
+              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              activeOpacity={0.7}
+              onPress={() => router.push('/SafetyTips')}
+            >
+              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(251, 191, 36, 0.1)' }]}>
+                <Ionicons name="bulb" size={24} color="#fbbf24" />
+              </View>
+              <Text style={[styles.actionCardTitle, { color: colors.text }]}>Safety</Text>
+              <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>Tips</Text>
+            </TouchableOpacity>
+
+            {/* Location History */}
+            <TouchableOpacity
+              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              activeOpacity={0.7}
+              onPress={() => router.push('/LocationHistory')}
+            >
+              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(20, 184, 166, 0.1)' }]}>
+                <Ionicons name="location" size={24} color="#14b8a6" />
+              </View>
+              <Text style={[styles.actionCardTitle, { color: colors.text }]}>Location</Text>
+              <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>History</Text>
+            </TouchableOpacity>
+
+            {/* Resources */}
+            <TouchableOpacity
+              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              activeOpacity={0.7}
+              onPress={() => router.push('/Resources')}
+            >
+              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                <Ionicons name="book" size={24} color="#8b5cf6" />
+              </View>
+              <Text style={[styles.actionCardTitle, { color: colors.text }]}>Resources</Text>
+              <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>& Info</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* SAFETY STATUS */}
+        <View style={styles.safetyStatusSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Safety Status</Text>
+
+          <View style={[styles.statusCard, { backgroundColor: colors.card }]}>
+            <View style={styles.statusHeader}>
+              <View style={styles.statusBadge}>
+                <Ionicons name="shield-checkmark" size={20} color="#10b981" />
+                <Text style={styles.statusBadgeText}>Protected</Text>
+              </View>
+              <Text style={[styles.statusTime, { color: colors.textTertiary }]}>All systems active</Text>
+            </View>
+
+            <View style={styles.statusItems}>
+              <View style={styles.statusItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
+                <Text style={[styles.statusItemText, { color: colors.textSecondary }]}>Location tracking ready</Text>
+              </View>
+              <View style={styles.statusItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
+                <Text style={[styles.statusItemText, { color: colors.textSecondary }]}>Emergency contacts available</Text>
+              </View>
+              <View style={styles.statusItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
+                <Text style={[styles.statusItemText, { color: colors.textSecondary }]}>Support team online</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* EMERGENCY NUMBERS */}
+        <View style={styles.emergencySection}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency Hotlines</Text>
+            <TouchableOpacity onPress={() => router.push('/EmergencyHotline')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.emergencyCard, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={styles.emergencyItem}
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('tel:1800VAWC')}
+            >
+              <View style={styles.emergencyLeft}>
+                <Ionicons name="call" size={20} color="#ef4444" />
+                <Text style={[styles.emergencyText, { color: colors.text }]}>VAWC Hotline</Text>
+              </View>
+              <Text style={[styles.emergencyNumber, { color: colors.textSecondary }]}>1-800-VAWC</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.emergencyDivider, { backgroundColor: colors.border }]} />
+
+            <TouchableOpacity
+              style={styles.emergencyItem}
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('tel:911')}
+            >
+              <View style={styles.emergencyLeft}>
+                <Ionicons name="call" size={20} color="#ef4444" />
+                <Text style={[styles.emergencyText, { color: colors.text }]}>Emergency</Text>
+              </View>
+              <Text style={[styles.emergencyNumber, { color: colors.textSecondary }]}>911</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={{ height: 20 }} />
+      </ScrollView>
 
       {/* BOTTOM NAV */}
-      <View style={[styles.bottomNav, { backgroundColor: colors.card }]}>
+      <View style={[styles.bottomNav, { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => router.push("/Account")}
         >
           <View style={styles.navIconWrapper}>
-            <Ionicons name="person-outline" size={26} color={colors.textSecondary} />
+            <Ionicons name="person-outline" size={22} color={colors.textSecondary} />
           </View>
           <Text style={[styles.navText, { color: colors.textSecondary }]}>Profile</Text>
         </TouchableOpacity>
@@ -501,7 +647,7 @@ const Home = () => {
           onPress={() => router.push("/Chatlist")}
         >
           <View style={styles.navIconWrapper}>
-            <Ionicons name="chatbubbles-outline" size={26} color={colors.textSecondary} />
+            <Ionicons name="chatbubbles-outline" size={22} color={colors.textSecondary} />
           </View>
           <Text style={[styles.navText, { color: colors.textSecondary }]}>Messages</Text>
         </TouchableOpacity>
@@ -518,83 +664,97 @@ const styles = StyleSheet.create({
   statusBar: {
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     paddingTop: 50,
-    paddingHorizontal: 24,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    shadowColor: "#8b5cf6",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statusContent: {
     flexDirection: "row",
     alignItems: "center",
   },
-  logo: {
-    width: 48,
-    height: 48,
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(20, 184, 166, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
-    resizeMode: "contain",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   userInfo: {
     justifyContent: "center",
   },
   greeting: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#6b7280",
     fontWeight: "500",
   },
   userName: {
-    fontSize: 20,
+    fontSize: 18,
     color: "#1f2937",
-    fontWeight: "bold",
+    fontWeight: "700",
     marginTop: 2,
   },
   activeIndicator: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fef2f2",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
     borderColor: "#fecaca",
   },
   activeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: "#ef4444",
-    marginRight: 6,
+    marginRight: 5,
   },
   activeLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#ef4444",
     fontWeight: "700",
   },
   // Main Content
   mainContent: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 24,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingTop: 30,
+    paddingBottom: 20,
   },
   sosWrapper: {
-    marginBottom: 30,
+    alignItems: "center",
+    marginBottom: 20,
   },
   sosButton: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     backgroundColor: "#14b8a6",
     shadowColor: "#14b8a6",
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowRadius: 16,
+    elevation: 10,
   },
   sosButtonActive: {
     backgroundColor: "#ef4444",
@@ -603,7 +763,7 @@ const styles = StyleSheet.create({
   sosTouchable: {
     width: "100%",
     height: "100%",
-    borderRadius: 110,
+    borderRadius: 90,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -611,19 +771,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   sosIcon: {
-    marginBottom: 8,
+    marginBottom: 6,
   },
   sosText: {
-    fontSize: 48,
+    fontSize: 38,
     fontWeight: "800",
     color: "#fff",
-    letterSpacing: 4,
+    letterSpacing: 3,
   },
   sosSubtext: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#fff",
     opacity: 0.95,
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: "600",
   },
   // Info Cards
@@ -686,16 +846,11 @@ const styles = StyleSheet.create({
   bottomNav: {
     flexDirection: "row",
     backgroundColor: "rgba(255, 255, 255, 0.98)",
-    paddingTop: 16,
-    paddingBottom: 20,
-    paddingHorizontal: 40,
+    paddingTop: 10,
+    paddingBottom: 12,
+    paddingHorizontal: 30,
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
-    shadowColor: "#8b5cf6",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
     justifyContent: "space-around",
     alignItems: "center",
   },
@@ -703,22 +858,176 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   navIconWrapper: {
-    marginBottom: 4,
+    marginBottom: 2,
   },
   navDivider: {
     width: 1,
-    height: 40,
+    height: 30,
     backgroundColor: "#e5e7eb",
-    marginHorizontal: 20,
+    marginHorizontal: 16,
   },
   navText: {
+    fontSize: 10,
+    color: "#6b7280",
+    marginTop: 2,
+    fontWeight: "600",
+  },
+  // Section Styles
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1f2937",
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#14b8a6',
+  },
+  // Quick Actions
+  quickActionsSection: {
+    marginTop: 24,
+  },
+  quickActionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  actionCard: {
+    width: "48%",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: "center",
+    shadowColor: "#14b8a6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  actionIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  actionCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1f2937",
+    marginBottom: 2,
+  },
+  actionCardSubtitle: {
     fontSize: 12,
     color: "#6b7280",
-    marginTop: 4,
+    fontWeight: "500",
+  },
+  // Safety Status
+  safetyStatusSection: {
+    marginTop: 8,
+  },
+  statusCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#10b981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statusHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#10b981",
+    marginLeft: 6,
+  },
+  statusTime: {
+    fontSize: 12,
+    color: "#9ca3af",
+  },
+  statusItems: {
+    gap: 12,
+  },
+  statusItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  statusItemText: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginLeft: 10,
+    flex: 1,
+  },
+  // Emergency Section
+  emergencySection: {
+    marginTop: 24,
+  },
+  emergencyCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 16,
+    padding: 4,
+    shadowColor: "#ef4444",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  emergencyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  emergencyLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  emergencyText: {
+    fontSize: 15,
     fontWeight: "600",
+    color: "#1f2937",
+    marginLeft: 12,
+  },
+  emergencyNumber: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#6b7280",
+  },
+  emergencyDivider: {
+    height: 1,
+    backgroundColor: "#e5e7eb",
+    marginHorizontal: 16,
   },
 });
 

@@ -19,6 +19,7 @@
     "axios": "^1.13.1",
     "cloudinary": "^2.8.0",
     "expo": "~54.0.20",
+    "expo-audio": "~1.0.14",
     "expo-av": "~16.0.7",
     "expo-constants": "~18.0.10",
     "expo-file-system": "~19.0.17",

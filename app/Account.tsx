@@ -17,7 +17,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme, Theme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Types
 interface UserProfile {
@@ -34,6 +35,8 @@ const API_BASE_URL = "http://192.168.100.6:10000/api";
 
 const Account: React.FC = () => {
   const { theme, toggleTheme: toggleGlobalTheme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
+
   // User Profile State
   const [profile, setProfile] = useState<UserProfile>({
     fullname: "",
@@ -69,7 +72,7 @@ const Account: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
-  
+
   // Modal State
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -83,7 +86,7 @@ const Account: React.FC = () => {
     try {
       setIsFetching(true);
       const token = await AsyncStorage.getItem('token');
-      
+
       if (!token) {
         Alert.alert("Error", "Please login first");
         router.replace('/');
@@ -109,10 +112,10 @@ const Account: React.FC = () => {
           contactNumber: data.user.contactNumber || "",
           avatar: data.user.avatar || "",
         };
-        
+
         setProfile(userData);
         setOriginalProfile(userData);
-        
+
         // Also update AsyncStorage
         await AsyncStorage.setItem('username', userData.username);
         await AsyncStorage.setItem('email', userData.email);
@@ -175,7 +178,7 @@ const Account: React.FC = () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('token');
-      
+
       const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: 'PUT',
         headers: {
@@ -193,11 +196,11 @@ const Account: React.FC = () => {
 
       if (response.ok) {
         Alert.alert("Success", "Profile updated successfully!");
-        
+
         // Update local storage
         await AsyncStorage.setItem('username', data.user.username);
         await AsyncStorage.setItem('email', data.user.email);
-        
+
         // Update original profile state
         setOriginalProfile(profile);
       } else {
@@ -216,7 +219,7 @@ const Account: React.FC = () => {
       Alert.alert("Error", "Please fill all password fields");
       return;
     }
-    
+
     if (passwords.new !== passwords.confirm) {
       Alert.alert("Error", "New passwords do not match!");
       return;
@@ -231,7 +234,7 @@ const Account: React.FC = () => {
     setIsLoading(true);
     try {
       const token = await AsyncStorage.getItem('token');
-      
+
       const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
         method: 'PUT',
         headers: {
@@ -263,7 +266,7 @@ const Account: React.FC = () => {
   const handleImageUpload = useCallback(async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Please grant permission to access photos');
         return;
@@ -273,31 +276,27 @@ const Account: React.FC = () => {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5, // Reduce quality to make base64 smaller
+        quality: 0.5,
       });
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-        
-        // Show loading
+
         setIsLoading(true);
-        
+
         try {
           const token = await AsyncStorage.getItem('token');
-          
-          // Read file as base64
+
           const response = await fetch(imageUri);
           const blob = await response.blob();
-          
-          // Convert blob to base64
+
           const reader = new FileReader();
           reader.readAsDataURL(blob);
-          
+
           reader.onloadend = async () => {
             const base64data = reader.result as string;
-            
+
             try {
-              // Send to server
               const uploadResponse = await fetch(`${API_BASE_URL}/auth/upload-avatar`, {
                 method: 'POST',
                 headers: {
@@ -310,7 +309,6 @@ const Account: React.FC = () => {
               const data = await uploadResponse.json();
 
               if (uploadResponse.ok) {
-                // Update profile with new avatar
                 setProfile(prev => ({ ...prev, avatar: data.avatar }));
                 await AsyncStorage.setItem('avatar', data.avatar);
                 Alert.alert('Success', 'Profile picture updated successfully!');
@@ -324,12 +322,12 @@ const Account: React.FC = () => {
               setIsLoading(false);
             }
           };
-          
+
           reader.onerror = () => {
             setIsLoading(false);
             Alert.alert('Error', 'Failed to read image file');
           };
-          
+
         } catch (error) {
           setIsLoading(false);
           console.error('Processing error:', error);
@@ -356,7 +354,7 @@ const Account: React.FC = () => {
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('token');
-              
+
               const response = await fetch(`${API_BASE_URL}/auth/delete`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` },
@@ -448,306 +446,309 @@ const Account: React.FC = () => {
     }
   }, [toggleTheme, toggleNotifications, handleDeleteAccount]);
 
-  const styles = getStyles(theme);
+  const styles = getStyles(theme, colors);
 
   if (isFetching) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={ACCENT_COLOR} />
-        <Text style={[styles.label, { marginTop: 16 }]}>Loading profile...</Text>
+        <Text style={[styles.loadingText, { marginTop: 16, color: colors.text }]}>Loading profile...</Text>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      {/* Header Icons */}
-      <View style={styles.headerIcons}>
-        <TouchableOpacity 
-          onPress={() => router.push("/Home")} 
-          style={styles.iconButton}
-          accessible={true}
-          accessibilityLabel="Go back to home"
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 50) }]}>
+        <TouchableOpacity
+          onPress={() => router.push("/Home")}
+          style={styles.headerButton}
         >
-          <Ionicons name="arrow-back" size={26} color={ACCENT_COLOR} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <View>
-          <TouchableOpacity 
-            onPress={() => setMenuOpen(!menuOpen)} 
-            style={styles.iconButton}
-            accessible={true}
-            accessibilityLabel="Open menu"
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Account Settings</Text>
+
+        <View style={{ position: 'relative' }}>
+          <TouchableOpacity
+            onPress={() => setMenuOpen(!menuOpen)}
+            style={styles.headerButton}
           >
-            <Ionicons name="menu" size={26} color={ACCENT_COLOR} />
+            <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
           </TouchableOpacity>
 
           {menuOpen && (
             <>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.menuOverlay}
                 onPress={() => setMenuOpen(false)}
                 activeOpacity={1}
               />
-              <View style={styles.dropdownMenu}>
-                <TouchableOpacity 
-                  style={styles.dropdownItem} 
+              <ScrollView
+                style={[styles.dropdownMenu, { backgroundColor: colors.card }]}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={false}
+              >
+                <TouchableOpacity
+                  style={styles.dropdownItem}
                   onPress={() => handleMenuAction("theme")}
-                  activeOpacity={0.7}
                 >
-                  <Ionicons name="settings-outline" size={18} color={ACCENT_COLOR} />
-                  <Text style={styles.dropdownItemText}>
+                  <Ionicons name="color-palette-outline" size={20} color={ACCENT_COLOR} />
+                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>
                     Theme: {theme === "light" ? "Light" : "Dark"}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={styles.dropdownItem} 
+                <TouchableOpacity
+                  style={styles.dropdownItem}
                   onPress={() => handleMenuAction("notification")}
-                  activeOpacity={0.7}
                 >
-                  <Ionicons 
+                  <Ionicons
                     name={notificationsEnabled ? "notifications-outline" : "notifications-off-outline"}
-                    size={18} 
-                    color={ACCENT_COLOR} 
+                    size={20}
+                    color={ACCENT_COLOR}
                   />
-                  <Text style={styles.dropdownItemText}>
+                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>
                     Notifications: {notificationsEnabled ? "On" : "Off"}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={styles.dropdownItem} 
+                <TouchableOpacity
+                  style={styles.dropdownItem}
                   onPress={() => handleMenuAction("help")}
-                  activeOpacity={0.7}
                 >
-                  <Ionicons name="help-circle-outline" size={18} color={ACCENT_COLOR} />
-                  <Text style={styles.dropdownItemText}>Help</Text>
+                  <Ionicons name="help-circle-outline" size={20} color={ACCENT_COLOR} />
+                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>Help & Support</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={styles.dropdownItem} 
+                <TouchableOpacity
+                  style={styles.dropdownItem}
                   onPress={() => handleMenuAction("about")}
-                  activeOpacity={0.7}
                 >
-                  <Ionicons name="information-circle-outline" size={18} color={ACCENT_COLOR} />
-                  <Text style={styles.dropdownItemText}>About</Text>
+                  <Ionicons name="information-circle-outline" size={20} color={ACCENT_COLOR} />
+                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>About ResQYou</Text>
                 </TouchableOpacity>
 
-                <View style={styles.menuDivider} />
+                <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
 
-                <TouchableOpacity 
-                  style={styles.dropdownItem} 
+                <TouchableOpacity
+                  style={styles.dropdownItem}
                   onPress={() => handleMenuAction("delete")}
-                  activeOpacity={0.7}
                 >
-                  <Ionicons name="trash-outline" size={18} color="#dc3545" />
-                  <Text style={[styles.dropdownItemText, styles.dropdownDelete]}>
+                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                  <Text style={[styles.dropdownItemText, { color: '#ef4444' }]}>
                     Delete Account
                   </Text>
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
             </>
           )}
         </View>
       </View>
 
       {/* Main Content */}
-      <ScrollView 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+      <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 20, 40) }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
-          {/* Avatar Section */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleImageUpload} activeOpacity={0.8}>
-              <View style={styles.avatarContainer}>
-                {profile.avatar ? (
-                  <Image source={{ uri: profile.avatar }} style={styles.avatar} />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                    <Ionicons name="person" size={50} color={ACCENT_COLOR} />
-                  </View>
-                )}
-                <View style={styles.avatarBadge}>
-                  <Ionicons name="camera" size={16} color="#fff" />
+        {/* Avatar Section */}
+        <View style={[styles.profileHeader, { backgroundColor: colors.card }]}>
+          <TouchableOpacity onPress={handleImageUpload} activeOpacity={0.8}>
+            <View style={styles.avatarContainer}>
+              {profile.avatar ? (
+                <Image source={{ uri: profile.avatar }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.backgroundSecondary }]}>
+                  <Ionicons name="person" size={50} color={ACCENT_COLOR} />
                 </View>
-              </View>
-            </TouchableOpacity>
-            <Text style={styles.title}>My Account</Text>
-            <Text style={styles.subtitle}>@{profile.username}</Text>
-          </View>
-
-          {/* Profile Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Profile Information</Text>
-            
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name</Text>
-              <TextInput
-                value={profile.fullname}
-                onChangeText={(text) => setProfile(prev => ({ ...prev, fullname: text }))}
-                placeholder="Enter your full name"
-                style={styles.input}
-                placeholderTextColor={theme === "light" ? "#999" : "#666"}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                value={profile.email}
-                onChangeText={(text) => setProfile(prev => ({ ...prev, email: text }))}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                style={styles.input}
-                placeholderTextColor={theme === "light" ? "#999" : "#666"}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Contact Number</Text>
-              <TextInput
-                value={profile.contactNumber}
-                onChangeText={(text) => setProfile(prev => ({ ...prev, contactNumber: text }))}
-                placeholder="Enter your contact number"
-                keyboardType="phone-pad"
-                style={styles.input}
-                placeholderTextColor={theme === "light" ? "#999" : "#666"}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                value={profile.username}
-                editable={false}
-                style={[styles.input, styles.disabledInput]}
-                placeholderTextColor={theme === "light" ? "#999" : "#666"}
-              />
-              <Text style={styles.helperText}>Username cannot be changed</Text>
-            </View>
-
-            <TouchableOpacity 
-              onPress={handleUpdateProfile} 
-              style={[styles.button, styles.primaryButton, !hasProfileChanges() && styles.disabledButton]}
-              disabled={isLoading || !hasProfileChanges()}
-              activeOpacity={0.8}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Update Profile</Text>
               )}
-            </TouchableOpacity>
+              <View style={styles.avatarBadge}>
+                <Ionicons name="camera" size={16} color="#fff" />
+              </View>
+            </View>
+          </TouchableOpacity>
+          <Text style={[styles.profileName, { color: colors.text }]}>{profile.fullname || 'User Name'}</Text>
+          <Text style={[styles.profileUsername, { color: colors.textSecondary }]}>@{profile.username}</Text>
+        </View>
+
+        {/* Profile Information Card */}
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Profile Information</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name</Text>
+            <TextInput
+              value={profile.fullname}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, fullname: text }))}
+              placeholder="Enter your full name"
+              style={[styles.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
+              placeholderTextColor={colors.placeholder}
+            />
           </View>
 
-          {/* Password Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Change Password</Text>
-            
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Current Password</Text>
-              <View style={styles.passwordWrapper}>
-                <TextInput
-                  secureTextEntry={!passwordVisibility.old}
-                  value={passwords.old}
-                  onChangeText={(text) => setPasswords(prev => ({ ...prev, old: text }))}
-                  placeholder="Enter current password"
-                  style={styles.passwordInput}
-                  placeholderTextColor={theme === "light" ? "#999" : "#666"}
-                />
-                <TouchableOpacity 
-                  onPress={() => togglePasswordVisibility('old')} 
-                  style={styles.eyeIcon}
-                >
-                  <Ionicons
-                    name={passwordVisibility.old ? "eye-off-outline" : "eye-outline"}
-                    size={22}
-                    color={ACCENT_COLOR}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>New Password</Text>
-              <View style={styles.passwordWrapper}>
-                <TextInput
-                  secureTextEntry={!passwordVisibility.new}
-                  value={passwords.new}
-                  onChangeText={(text) => setPasswords(prev => ({ ...prev, new: text }))}
-                  placeholder="Enter new password"
-                  style={styles.passwordInput}
-                  placeholderTextColor={theme === "light" ? "#999" : "#666"}
-                />
-                <TouchableOpacity 
-                  onPress={() => togglePasswordVisibility('new')} 
-                  style={styles.eyeIcon}
-                >
-                  <Ionicons
-                    name={passwordVisibility.new ? "eye-off-outline" : "eye-outline"}
-                    size={22}
-                    color={ACCENT_COLOR}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Confirm New Password</Text>
-              <View style={styles.passwordWrapper}>
-                <TextInput
-                  secureTextEntry={!passwordVisibility.confirm}
-                  value={passwords.confirm}
-                  onChangeText={(text) => setPasswords(prev => ({ ...prev, confirm: text }))}
-                  placeholder="Re-enter new password"
-                  style={styles.passwordInput}
-                  placeholderTextColor={theme === "light" ? "#999" : "#666"}
-                />
-                <TouchableOpacity 
-                  onPress={() => togglePasswordVisibility('confirm')} 
-                  style={styles.eyeIcon}
-                >
-                  <Ionicons
-                    name={passwordVisibility.confirm ? "eye-off-outline" : "eye-outline"}
-                    size={22}
-                    color={ACCENT_COLOR}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              onPress={handleChangePassword} 
-              style={[styles.button, styles.secondaryButton]}
-              disabled={isLoading}
-              activeOpacity={0.8}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Change Password</Text>
-              )}
-            </TouchableOpacity>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
+            <TextInput
+              value={profile.email}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, email: text }))}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={[styles.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
+              placeholderTextColor={colors.placeholder}
+            />
           </View>
 
-          {/* Logout Button */}
-          <TouchableOpacity 
-            onPress={handleLogout} 
-            style={[styles.button, styles.logoutButton]}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Contact Number</Text>
+            <TextInput
+              value={profile.contactNumber}
+              onChangeText={(text) => setProfile(prev => ({ ...prev, contactNumber: text }))}
+              placeholder="Enter your contact number"
+              keyboardType="phone-pad"
+              style={[styles.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
+              placeholderTextColor={colors.placeholder}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Username</Text>
+            <TextInput
+              value={profile.username}
+              editable={false}
+              style={[styles.input, styles.disabledInput, { backgroundColor: colors.backgroundSecondary, color: colors.textSecondary, borderColor: colors.border }]}
+              placeholderTextColor={colors.placeholder}
+            />
+            <Text style={[styles.helperText, { color: colors.textTertiary }]}>Username cannot be changed</Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleUpdateProfile}
+            style={[styles.button, styles.primaryButton, !hasProfileChanges() && styles.disabledButton]}
+            disabled={isLoading || !hasProfileChanges()}
             activeOpacity={0.8}
           >
-            <Ionicons name="log-out-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.buttonText}>Log Out</Text>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>Update Profile</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
+
+        {/* Password Card */}
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>Change Password</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Current Password</Text>
+            <View style={[styles.passwordWrapper, { backgroundColor: colors.input, borderColor: colors.border }]}>
+              <TextInput
+                secureTextEntry={!passwordVisibility.old}
+                value={passwords.old}
+                onChangeText={(text) => setPasswords(prev => ({ ...prev, old: text }))}
+                placeholder="Enter current password"
+                style={[styles.passwordInput, { color: colors.text }]}
+                placeholderTextColor={colors.placeholder}
+              />
+              <TouchableOpacity
+                onPress={() => togglePasswordVisibility('old')}
+                style={styles.eyeIcon}
+              >
+                <Ionicons
+                  name={passwordVisibility.old ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color={ACCENT_COLOR}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>New Password</Text>
+            <View style={[styles.passwordWrapper, { backgroundColor: colors.input, borderColor: colors.border }]}>
+              <TextInput
+                secureTextEntry={!passwordVisibility.new}
+                value={passwords.new}
+                onChangeText={(text) => setPasswords(prev => ({ ...prev, new: text }))}
+                placeholder="Enter new password"
+                style={[styles.passwordInput, { color: colors.text }]}
+                placeholderTextColor={colors.placeholder}
+              />
+              <TouchableOpacity
+                onPress={() => togglePasswordVisibility('new')}
+                style={styles.eyeIcon}
+              >
+                <Ionicons
+                  name={passwordVisibility.new ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color={ACCENT_COLOR}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Confirm New Password</Text>
+            <View style={[styles.passwordWrapper, { backgroundColor: colors.input, borderColor: colors.border }]}>
+              <TextInput
+                secureTextEntry={!passwordVisibility.confirm}
+                value={passwords.confirm}
+                onChangeText={(text) => setPasswords(prev => ({ ...prev, confirm: text }))}
+                placeholder="Re-enter new password"
+                style={[styles.passwordInput, { color: colors.text }]}
+                placeholderTextColor={colors.placeholder}
+              />
+              <TouchableOpacity
+                onPress={() => togglePasswordVisibility('confirm')}
+                style={styles.eyeIcon}
+              >
+                <Ionicons
+                  name={passwordVisibility.confirm ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color={ACCENT_COLOR}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleChangePassword}
+            style={[styles.button, styles.secondaryButton]}
+            disabled={isLoading}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="key-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>Change Password</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity
+          onPress={handleLogout}
+          style={[styles.button, styles.logoutButton]}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.buttonText}>Log Out</Text>
+        </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Help Modal */}
       <Modal
@@ -757,16 +758,16 @@ const Account: React.FC = () => {
         onRequestClose={() => setShowHelp(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Help & Support</Text>
-            <Text style={styles.modalText}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: ACCENT_COLOR }]}>Help & Support</Text>
+            <Text style={[styles.modalText, { color: colors.text }]}>
               Need assistance? Contact our support team:{'\n\n'}
               📧 Email: support@resqyou.com{'\n'}
               📞 Hotline: 1-800-RESQYOU{'\n\n'}
               Available 24/7
             </Text>
-            <TouchableOpacity 
-              style={styles.modalButton} 
+            <TouchableOpacity
+              style={[styles.modalButton, { backgroundColor: ACCENT_COLOR }]}
               onPress={() => setShowHelp(false)}
             >
               <Text style={styles.buttonText}>Close</Text>
@@ -783,15 +784,15 @@ const Account: React.FC = () => {
         onRequestClose={() => setShowAbout(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>About ResQYou</Text>
-            <Text style={styles.modalText}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: ACCENT_COLOR }]}>About ResQYou</Text>
+            <Text style={[styles.modalText, { color: colors.text }]}>
               ResQYou Support App v1.0.0{'\n\n'}
               Providing support and resources for those affected by violence against women and children.{'\n\n'}
               © 2024 ResQYou. All rights reserved.
             </Text>
-            <TouchableOpacity 
-              style={styles.modalButton} 
+            <TouchableOpacity
+              style={[styles.modalButton, { backgroundColor: ACCENT_COLOR }]}
               onPress={() => setShowAbout(false)}
             >
               <Text style={styles.buttonText}>Close</Text>
@@ -799,113 +800,96 @@ const Account: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
 // Styles Function
-const getStyles = (theme: Theme) => StyleSheet.create({
+const getStyles = (theme: Theme, colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme === "light" ? "#f5f5f5" : "#1c1c1c",
+    backgroundColor: colors.background,
   },
-  headerIcons: {
-    position: "absolute",
-    top: Platform.OS === 'ios' ? 50 : 20,
-    left: 20,
-    right: 20,
+  loadingText: {
+    fontSize: 16,
+  },
+  header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    zIndex: 1000,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    zIndex: 100,
   },
-  iconButton: {
-    padding: 10,
-    backgroundColor: theme === "light" ? "#fff" : "#2b2b2b",
+  headerButton: {
+    padding: 8,
     borderRadius: 8,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
   menuOverlay: {
     position: 'absolute',
-    top: 0,
+    top: -100,
     left: -1000,
     right: -1000,
     bottom: -1000,
+    zIndex: 999,
   },
   dropdownMenu: {
     position: "absolute",
-    top: 45,
+    top: 55,
     right: 0,
-    backgroundColor: theme === "light" ? "#fff" : "#2b2b2b",
-    borderWidth: 1,
-    borderColor: "#8c01c0",
-    borderRadius: 8,
-    minWidth: 220,
-    overflow: "hidden",
-    elevation: 4,
+    borderRadius: 12,
+    minWidth: 250,
+    maxHeight: 400,
+    elevation: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    zIndex: 1000,
   },
   dropdownItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
   },
   dropdownItemText: {
     marginLeft: 12,
-    fontSize: 14,
-    color: theme === "light" ? "#333" : "#fff",
-  },
-  dropdownDelete: {
-    color: "#dc3545",
-    fontWeight: "600",
+    fontSize: 15,
   },
   menuDivider: {
     height: 1,
-    backgroundColor: theme === "light" ? "#e0e0e0" : "#444",
     marginVertical: 4,
   },
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 120 : 90,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-  },
-  card: {
-    backgroundColor: theme === "light" ? "#fff" : "#2b2b2b",
-    borderRadius: 12,
-    padding: 20,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  header: {
+  profileHeader: {
     alignItems: "center",
-    marginBottom: 30,
+    paddingVertical: 32,
+    marginBottom: 16,
   },
   avatarContainer: {
     position: "relative",
+    marginBottom: 16,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: "#8c01c0",
+    borderColor: ACCENT_COLOR,
   },
   avatarPlaceholder: {
-    backgroundColor: theme === "light" ? "#f0e7ff" : "#3b3b3b",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -913,116 +897,99 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#8c01c0",
+    backgroundColor: ACCENT_COLOR,
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: theme === "light" ? "#fff" : "#2b2b2b",
+    borderColor: colors.card,
   },
-  title: {
-    marginTop: 12,
+  profileName: {
     fontSize: 24,
-    color: "#8c01c0",
     fontWeight: "bold",
+    marginBottom: 4,
   },
-  subtitle: {
-    marginTop: 4,
+  profileUsername: {
     fontSize: 14,
-    color: theme === "light" ? "#666" : "#999",
   },
-  section: {
-    marginBottom: 24,
-    paddingBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: theme === "light" ? "#e0e0e0" : "#444",
+  card: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  sectionTitle: {
+  cardTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    color: theme === "light" ? "#333" : "#fff",
+    fontWeight: "bold",
     marginBottom: 16,
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    marginBottom: 6,
+    marginBottom: 8,
     fontWeight: "600",
     fontSize: 14,
-    color: theme === "light" ? "#333" : "#e0e0e0",
   },
   input: {
-    backgroundColor: theme === "light" ? "#f5f5f5" : "#3b3b3b",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme === "light" ? "#e0e0e0" : "#555",
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: theme === "light" ? "#333" : "#fff",
   },
   disabledInput: {
     opacity: 0.6,
-    backgroundColor: theme === "light" ? "#e8e8e8" : "#2a2a2a",
   },
   helperText: {
     fontSize: 12,
-    color: theme === "light" ? "#666" : "#999",
     marginTop: 4,
     fontStyle: "italic",
   },
   passwordWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme === "light" ? "#f5f5f5" : "#3b3b3b",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme === "light" ? "#e0e0e0" : "#555",
   },
   passwordInput: {
     flex: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: theme === "light" ? "#333" : "#fff",
   },
   eyeIcon: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 12,
   },
   button: {
-    width: "100%",
     paddingVertical: 14,
-    borderRadius: 8,
-    marginTop: 12,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    borderRadius: 10,
+    marginTop: 8,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
   },
   primaryButton: {
-    backgroundColor: "#8c01c0",
+    backgroundColor: ACCENT_COLOR,
   },
   secondaryButton: {
     backgroundColor: "#6c757d",
   },
   logoutButton: {
-    backgroundColor: "#dc3545",
-    marginTop: 20,
+    backgroundColor: "#ef4444",
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
   disabledButton: {
     opacity: 0.5,
   },
   buttonText: {
     color: "#fff",
-    textAlign: "center",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -1034,28 +1001,24 @@ const getStyles = (theme: Theme) => StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: theme === "light" ? "#fff" : "#2b2b2b",
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 24,
     width: "100%",
     maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
-    color: "#8c01c0",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   modalText: {
     fontSize: 15,
-    color: theme === "light" ? "#333" : "#e0e0e0",
-    lineHeight: 22,
-    marginBottom: 20,
+    lineHeight: 24,
+    marginBottom: 24,
   },
   modalButton: {
-    backgroundColor: "#8c01c0",
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: "center",
   },
 });
