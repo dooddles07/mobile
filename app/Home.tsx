@@ -24,6 +24,7 @@ import axios from "axios";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { initializeSocket, onSOSResolved, removeListener, disconnectSocket } from "../utils/socket";
+import soundManager from "../utils/soundManager";
 
 const { width } = Dimensions.get("window");
 
@@ -153,6 +154,8 @@ const Home = () => {
       }
       // Clean up socket listeners
       removeListener('sos-resolved');
+      // Stop SOS sound on component unmount
+      soundManager.stopSOSSound();
     };
   }, []);
 
@@ -165,6 +168,8 @@ const Home = () => {
       if (response.data.hasActiveSOS) {
         setSosActive(true);
         startPulseAnimation();
+        // Resume SOS sound
+        await soundManager.playSOSSound();
         // Resume location tracking
         startLocationTracking();
         // Start status checking as a fallback (less aggressive now)
@@ -213,6 +218,9 @@ const Home = () => {
     await stopLocationTracking();
     stopPulseAnimation();
     stopStatusChecking();
+
+    // Stop SOS sound
+    await soundManager.stopSOSSound();
 
     // Update UI
     setSosActive(false);
@@ -360,6 +368,9 @@ const Home = () => {
                 // Stop status checking
                 stopStatusChecking();
 
+                // Stop SOS sound
+                await soundManager.stopSOSSound();
+
                 // Cancel SOS in backend
                 await axios.post("http://192.168.100.6:10000/api/sos/cancel", {
                   username,
@@ -374,6 +385,7 @@ const Home = () => {
                 // If 404, it means the SOS was already resolved or cancelled
                 if (error?.response?.status === 404) {
                   stopPulseAnimation();
+                  await soundManager.stopSOSSound();
                   setSosActive(false);
                   Alert.alert(
                     "SOS Already Resolved",
@@ -496,6 +508,9 @@ const Home = () => {
       startPulseAnimation();
       setSosActive(true);
       setLastUpdate(new Date());
+
+      // Play SOS sound with looping
+      await soundManager.playSOSSound();
 
       await startLocationTracking();
 
