@@ -25,6 +25,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { initializeSocket, onSOSResolved, removeListener, disconnectSocket } from "../utils/socket";
 import soundManager from "../utils/soundManager";
+import API_ENDPOINTS from "../config/api";
 
 const { width } = Dimensions.get("window");
 
@@ -46,16 +47,20 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
         const username = await AsyncStorage.getItem("username");
         const { latitude, longitude } = location.coords;
         
-        console.log(`Background location update: ${latitude}, ${longitude}`);
-        
-        // Send location update to backend
-        await axios.post("http://192.168.100.6:10000/api/sos/send", {
+        console.log(`📍 Background location update: ${latitude}, ${longitude}`);
+
+        const backgroundPayload = {
           username,
           latitude: Number(latitude),
           longitude: Number(longitude),
-        });
-        
-        console.log("Location updated successfully in background");
+        };
+
+        console.log('🔄 Background payload:', backgroundPayload);
+
+        // Send location update to backend
+        const bgResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, backgroundPayload);
+
+        console.log("✅ Background location updated successfully:", bgResponse.data);
       } catch (error) {
         console.error("Error updating location in background:", error);
       }
@@ -162,7 +167,7 @@ const Home = () => {
   const checkActiveSOS = async (username: string) => {
     try {
       const response = await axios.get(
-        `http://192.168.100.6:10000/api/sos/active/${username}`
+        `${API_ENDPOINTS.SOS}/active/${username}`
       );
 
       if (response.data.hasActiveSOS) {
@@ -186,7 +191,7 @@ const Home = () => {
     statusCheckIntervalRef.current = setInterval(async () => {
       try {
         const response = await axios.get(
-          `http://192.168.100.6:10000/api/sos/active/${username}`
+          `${API_ENDPOINTS.SOS}/active/${username}`
         );
 
         // If no active SOS found, it might have been resolved
@@ -280,17 +285,23 @@ const Home = () => {
       });
 
       const { latitude, longitude, accuracy: locationAccuracy } = location.coords;
-      
-      console.log(`Updating location: ${latitude}, ${longitude} (${Math.round(locationAccuracy || 0)}m)`);
 
-      await axios.post("http://192.168.100.6:10000/api/sos/send", {
+      console.log(`📍 Updating location: ${latitude}, ${longitude} (${Math.round(locationAccuracy || 0)}m)`);
+
+      const updatePayload = {
         username,
         latitude: Number(latitude),
         longitude: Number(longitude),
-      });
+      };
+
+      console.log('🔄 Sending location update:', updatePayload);
+
+      const updateResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, updatePayload);
+
+      console.log("✅ Location update response:", updateResponse.data);
 
       setLastUpdate(new Date());
-      console.log("Location updated successfully");
+      console.log("✅ Location updated successfully at", new Date().toLocaleTimeString());
     } catch (error) {
       console.error("Error updating location:", error);
     }
@@ -372,7 +383,7 @@ const Home = () => {
                 await soundManager.stopSOSSound();
 
                 // Cancel SOS in backend
-                await axios.post("http://192.168.100.6:10000/api/sos/cancel", {
+                await axios.post(`${API_ENDPOINTS.SOS}/cancel`, {
                   username,
                 });
 
@@ -492,18 +503,35 @@ const Home = () => {
       const { latitude, longitude, accuracy: locationAccuracy } = location.coords;
 
       console.log(`Initial location accuracy: ${Math.round(locationAccuracy || 0)} meters`);
+      console.log('📍 Location coordinates:', { latitude, longitude });
+      console.log('👤 Username:', username);
+
+      // Validate data before sending
+      if (!username || username === 'Loading...' || username === 'Guest') {
+        throw new Error('Invalid username. Please ensure you are logged in.');
+      }
+
+      if (!latitude || !longitude) {
+        throw new Error('Invalid location coordinates.');
+      }
+
+      const sosPayload = {
+        username,
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+      };
+
+      console.log('📤 Sending SOS payload:', sosPayload);
+      console.log('📤 API endpoint:', `${API_ENDPOINTS.SOS}/send`);
 
       // Step 4: Send initial SOS to backend
       const response = await axios.post(
-        "http://192.168.100.6:10000/api/sos/send",
-        {
-          username,
-          latitude: Number(latitude),
-          longitude: Number(longitude),
-        }
+        `${API_ENDPOINTS.SOS}/send`,
+        sosPayload
       );
 
-      console.log("Initial SOS response:", response.data);
+      console.log("✅ Initial SOS response:", response.data);
+      console.log("✅ Response status:", response.status);
 
       startPulseAnimation();
       setSosActive(true);
