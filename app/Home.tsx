@@ -11,6 +11,7 @@ import {
   Image,
   ScrollView,
   Linking,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,9 +19,11 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
+import * as IntentLauncher from 'expo-intent-launcher';
 import axios from "axios";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initializeSocket, onSOSResolved, removeListener, disconnectSocket } from "../utils/socket";
 
 const { width } = Dimensions.get("window");
 
@@ -73,10 +76,30 @@ const Home = () => {
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const statusCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const socketInitialized = useRef<boolean>(false);
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
     ? ["#f0fdfa", "#ccfbf1", "#99f6e4"]
     : ["#0f172a", "#1e293b", "#334155"];
+
+  // Helper function to open device location settings
+  const openLocationSettings = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        // Open Android Location Settings
+        await IntentLauncher.startActivityAsync(
+          IntentLauncher.ActivityAction.LOCATION_SOURCE_SETTINGS
+        );
+      } else {
+        // Open iOS Settings app (will open main settings, user navigates to Location Services)
+        await Linking.openURL('app-settings:');
+      }
+    } catch (error) {
+      console.error('Error opening location settings:', error);
+      // Fallback to app settings if location settings fails
+      await Linking.openSettings();
+    }
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -92,6 +115,25 @@ const Home = () => {
         // Check if user has active SOS on app start
         if (storedUsername) {
           await checkActiveSOS(storedUsername);
+        }
+
+        // Initialize socket connection and listen for sos-resolved events
+        if (!socketInitialized.current) {
+          try {
+            await initializeSocket();
+            socketInitialized.current = true;
+
+            // Listen for SOS resolved event from backend
+            onSOSResolved(async (data) => {
+              console.log("✅ Received sos-resolved event from server:", data);
+              console.log("📍 Current SOS status:", sosActive);
+              await handleAdminResolve();
+            });
+
+            console.log("Socket initialized and listening for sos-resolved events");
+          } catch (error) {
+            console.error("Failed to initialize socket:", error);
+          }
         }
       } catch (error) {
         console.error("Failed to retrieve user data:", error);
@@ -109,6 +151,8 @@ const Home = () => {
       if (statusCheckIntervalRef.current) {
         clearInterval(statusCheckIntervalRef.current);
       }
+      // Clean up socket listeners
+      removeListener('sos-resolved');
     };
   }, []);
 
@@ -123,7 +167,7 @@ const Home = () => {
         startPulseAnimation();
         // Resume location tracking
         startLocationTracking();
-        // Start status checking to detect admin resolve
+        // Start status checking as a fallback (less aggressive now)
         startStatusChecking();
       }
     } catch (error) {
@@ -132,24 +176,27 @@ const Home = () => {
   };
 
   const startStatusChecking = () => {
-    // Check SOS status every 10 seconds
+    // Check SOS status every 5 minutes as a fallback (socket is primary method)
+    // This is just a safety net in case socket connection fails
     statusCheckIntervalRef.current = setInterval(async () => {
       try {
         const response = await axios.get(
           `http://192.168.100.6:10000/api/sos/active/${username}`
         );
 
-        // If no active SOS found, admin has resolved it
+        // If no active SOS found, it might have been resolved
         if (!response.data.hasActiveSOS) {
+          console.log("Fallback status check: No active SOS found");
           await handleAdminResolve();
         }
       } catch (error: any) {
-        // 404 means no active SOS - admin resolved it
+        // 404 means no active SOS
         if (error?.response?.status === 404) {
+          console.log("Fallback status check: SOS not found (404)");
           await handleAdminResolve();
         }
       }
-    }, 10000) as any; // Check every 10 seconds
+    }, 300000) as any; // Check every 5 minutes (300000ms) instead of 10 seconds
   };
 
   const stopStatusChecking = () => {
@@ -280,6 +327,16 @@ const Home = () => {
   };
 
   const handleSOS = async () => {
+    // Validate username is loaded before allowing SOS
+    if (!username || username === "Loading..." || username === "Guest" || username === "Error") {
+      Alert.alert(
+        "Not Ready",
+        "Please wait while your profile is loading, or log in to use SOS.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     // If SOS is active, cancel it
     if (sosActive) {
       Alert.alert(
@@ -311,9 +368,21 @@ const Home = () => {
                 stopPulseAnimation();
                 setSosActive(false);
                 Alert.alert("SOS Cancelled", "Your SOS alert has been cancelled and location tracking stopped.");
-              } catch (error) {
+              } catch (error: any) {
                 console.error("Cancel SOS error:", error);
-                Alert.alert("Error", "Failed to cancel SOS. Please try again.");
+
+                // If 404, it means the SOS was already resolved or cancelled
+                if (error?.response?.status === 404) {
+                  stopPulseAnimation();
+                  setSosActive(false);
+                  Alert.alert(
+                    "SOS Already Resolved",
+                    "This emergency has already been resolved or cancelled. Location tracking stopped.",
+                    [{ text: "OK" }]
+                  );
+                } else {
+                  Alert.alert("Error", "Failed to cancel SOS. Please try again.");
+                }
               } finally {
                 setLoading(false);
               }
@@ -324,59 +393,133 @@ const Home = () => {
       return;
     }
 
-    // Request location permission
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Denied",
-        "Location permission is required to send SOS."
-      );
-      return;
-    }
-
     setLoading(true);
 
     try {
-  // Get initial location
-  const location = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.BestForNavigation,
-  });
+      // Step 1: Automatically request location permission - this will prompt user to enable location if it's off
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
-  const { latitude, longitude, accuracy: locationAccuracy } = location.coords;
-  
-  console.log(`Initial location accuracy: ${Math.round(locationAccuracy || 0)} meters`);
+      if (status !== "granted") {
+        // Check if location services are disabled vs permission denied
+        const isLocationEnabled = await Location.hasServicesEnabledAsync();
 
-  // Send initial SOS to backend
-  const response = await axios.post(
-    "http://192.168.100.6:10000/api/sos/send",
-    {
-      username,
-      latitude: Number(latitude),
-      longitude: Number(longitude),
-    }
-  );
+        if (!isLocationEnabled) {
+          // Location services are disabled on the device
+          Alert.alert(
+            "Enable Location",
+            "Location is turned off. Please enable it to send SOS alerts.",
+            [
+              {
+                text: "Open Settings",
+                onPress: openLocationSettings
+              },
+              { text: "Cancel", style: "cancel" }
+            ]
+          );
+        } else {
+          // Permission was denied
+          Alert.alert(
+            "Location Permission Required",
+            "Location access is needed to send your coordinates in SOS alerts. Tap 'Open Settings' to grant permission.",
+            [
+              {
+                text: "Open Settings",
+                onPress: openLocationSettings
+              },
+              { text: "Cancel", style: "cancel" }
+            ]
+          );
+        }
+        setLoading(false);
+        return;
+      }
 
-  console.log("Initial SOS response:", response.data);
+      // Step 3: Get initial location with better error handling
+      let location;
+      try {
+        location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced, // Changed from BestForNavigation for faster response
+          timeout: 15000, // 15 second timeout
+          maximumAge: 10000, // Accept locations up to 10 seconds old
+        });
+      } catch (locationError: any) {
+        console.error("Error getting location:", locationError);
 
-  startPulseAnimation();
-  setSosActive(true);
-  setLastUpdate(new Date());
+        // Provide specific error messages
+        let errorMessage = "Unable to get your current location. ";
 
-  await startLocationTracking();
+        if (locationError.message?.includes("timeout")) {
+          errorMessage += "GPS signal is weak. Please move to an open area and try again.";
+        } else if (locationError.message?.includes("unavailable")) {
+          errorMessage += "Please ensure Location Services are enabled and try again.";
+        } else if (locationError.message?.includes("settings")) {
+          errorMessage += "Please check your device location settings.";
+        } else {
+          errorMessage += "Please try again in a moment.";
+        }
 
-  // Start checking SOS status for admin resolve
-  startStatusChecking();
+        Alert.alert(
+          "Location Error",
+          errorMessage,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => Linking.openSettings()
+            },
+            {
+              text: "Retry",
+              onPress: () => handleSOS() // Retry the SOS function
+            }
+          ]
+        );
+        setLoading(false);
+        return;
+      }
 
-  Alert.alert(
-    "SOS Activated",
-    `Your location is being tracked every minute.\n\nAccuracy: ${Math.round(locationAccuracy || 0)}m\nLocation: ${response.data.sos.address || 'Location sent'}`,
-    [{ text: "OK" }]
-  );
-} catch (error) {
-  console.error(
-    axios.isAxiosError(error)
-      ? error.response?.data || error.message
-      : error
+      const { latitude, longitude, accuracy: locationAccuracy } = location.coords;
+
+      console.log(`Initial location accuracy: ${Math.round(locationAccuracy || 0)} meters`);
+
+      // Step 4: Send initial SOS to backend
+      const response = await axios.post(
+        "http://192.168.100.6:10000/api/sos/send",
+        {
+          username,
+          latitude: Number(latitude),
+          longitude: Number(longitude),
+        }
+      );
+
+      console.log("Initial SOS response:", response.data);
+
+      startPulseAnimation();
+      setSosActive(true);
+      setLastUpdate(new Date());
+
+      await startLocationTracking();
+
+      // Socket will notify us when admin resolves, no need for aggressive polling
+      // Fallback polling is only started when resuming an existing SOS on app load
+
+      // Extract address safely from response - handle different response formats
+      const sosData = response.data?.sos || response.data?.data?.sos || response.data;
+      const address = sosData?.address || 'Location sent successfully';
+
+      Alert.alert(
+        "SOS Activated ✅",
+        `Your location is being shared with emergency responders.\n\n` +
+        `📍 Accuracy: ${Math.round(locationAccuracy || 0)}m\n` +
+        `📍 Location: ${address}\n\n` +
+        `Updates every 60 seconds.`,
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("SOS Error:", error);
+      console.error(
+        axios.isAxiosError(error)
+          ? error.response?.data || error.message
+          : error
   );
   Alert.alert(
     "Error",

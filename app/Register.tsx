@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_URL = "http://192.168.100.6:10000/api/auth";
 
@@ -44,30 +45,76 @@ const Register = () => {
       return;
     }
 
+    // Validate password requirements
+    if (password.length < 6) {
+      Alert.alert("Weak Password", "Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (!/(?=.*[a-z])/.test(password)) {
+      Alert.alert("Weak Password", "Password must contain at least one lowercase letter.");
+      return;
+    }
+
+    if (!/(?=.*[A-Z])/.test(password)) {
+      Alert.alert("Weak Password", "Password must contain at least one uppercase letter.");
+      return;
+    }
+
+    if (!/(?=.*\d)/.test(password)) {
+      Alert.alert("Weak Password", "Password must contain at least one number.");
+      return;
+    }
+
+    // Validate username format
+    if (username.length < 3 || username.length > 30) {
+      Alert.alert("Invalid Username", "Username must be 3-30 characters long.");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      Alert.alert("Invalid Username", "Username can only contain letters, numbers, and underscores.");
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const requestData = {
+        fullname,
+        email,
+        username,
+        password,
+        contactNumber,
+      };
+
+      console.log('Sending registration request to:', `${API_URL}/register`);
+      console.log('Request data:', { ...requestData, password: '***' }); // Hide password in logs
+
       const res = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullname,
-          email,
-          username,
-          password,
-          contactNumber,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       const data = await res.json();
 
+      console.log('Registration response status:', res.status);
+      console.log('Registration response data:', data);
+
       if (res.ok) {
+        // Clear any old avatar from previous sessions
+        await AsyncStorage.removeItem("avatar");
+
         Alert.alert("Success", "Registered successfully!");
         router.replace("/");
       } else {
-        Alert.alert("Registration Failed", data.message || "Please try again.");
+        const errorMessage = data.message || "Please try again.";
+        console.error('Registration failed:', errorMessage);
+        Alert.alert("Registration Failed", errorMessage);
       }
     } catch (error) {
-      Alert.alert("Error", "Something went wrong. Please try again later.");
+      console.error('Registration error:', error);
+      Alert.alert("Error", `Network error: ${error.message || 'Please check your connection and try again.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -184,6 +231,51 @@ const Register = () => {
                 />
               </TouchableOpacity>
             </View>
+            {password.length > 0 && (
+              <View style={styles.passwordRequirements}>
+                <Text style={[styles.requirementText, { color: colors.textSecondary }]}>Password must contain:</Text>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={password.length >= 6 ? "checkmark-circle" : "close-circle"}
+                    size={16}
+                    color={password.length >= 6 ? "#10b981" : "#ef4444"}
+                  />
+                  <Text style={[styles.requirementItem, { color: password.length >= 6 ? "#10b981" : colors.textSecondary }]}>
+                    At least 6 characters
+                  </Text>
+                </View>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={/(?=.*[a-z])/.test(password) ? "checkmark-circle" : "close-circle"}
+                    size={16}
+                    color={/(?=.*[a-z])/.test(password) ? "#10b981" : "#ef4444"}
+                  />
+                  <Text style={[styles.requirementItem, { color: /(?=.*[a-z])/.test(password) ? "#10b981" : colors.textSecondary }]}>
+                    One lowercase letter
+                  </Text>
+                </View>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={/(?=.*[A-Z])/.test(password) ? "checkmark-circle" : "close-circle"}
+                    size={16}
+                    color={/(?=.*[A-Z])/.test(password) ? "#10b981" : "#ef4444"}
+                  />
+                  <Text style={[styles.requirementItem, { color: /(?=.*[A-Z])/.test(password) ? "#10b981" : colors.textSecondary }]}>
+                    One uppercase letter
+                  </Text>
+                </View>
+                <View style={styles.requirementRow}>
+                  <Ionicons
+                    name={/(?=.*\d)/.test(password) ? "checkmark-circle" : "close-circle"}
+                    size={16}
+                    color={/(?=.*\d)/.test(password) ? "#10b981" : "#ef4444"}
+                  />
+                  <Text style={[styles.requirementItem, { color: /(?=.*\d)/.test(password) ? "#10b981" : colors.textSecondary }]}>
+                    One number
+                  </Text>
+                </View>
+              </View>
+            )}
 
             <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
               <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
@@ -324,6 +416,27 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 8,
+  },
+  passwordRequirements: {
+    backgroundColor: 'rgba(20, 184, 166, 0.05)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    marginTop: -8,
+  },
+  requirementText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  requirementItem: {
+    fontSize: 12,
+    marginLeft: 8,
   },
   button: {
     backgroundColor: "#14b8a6",

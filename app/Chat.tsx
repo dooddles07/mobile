@@ -159,11 +159,14 @@ MessageItem.displayName = 'MessageItem';
 const Chat: React.FC = () => {
   const { theme, colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { conversationId, adminName } = useLocalSearchParams<{
-    conversationId: string;
-    adminName: string;
+  const params = useLocalSearchParams<{
+    conversationId?: string;
+    adminName?: string;
   }>();
   const router = useRouter();
+
+  const conversationId = params.conversationId;
+  const adminName = params.adminName;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -183,6 +186,24 @@ const Chat: React.FC = () => {
   // ============================================
 
   useEffect(() => {
+    // Check if conversationId is valid
+    if (!conversationId || conversationId === 'undefined') {
+      console.error('❌ No conversationId provided to Chat screen');
+      console.log('Route params:', params);
+      Alert.alert(
+        'Error',
+        'No conversation selected. Please select a conversation from the list.',
+        [
+          {
+            text: 'Go Back',
+            onPress: () => router.back()
+          }
+        ]
+      );
+      return;
+    }
+
+    console.log('✅ Chat screen opened with conversationId:', conversationId);
     fetchMessages();
     markMessagesAsRead();
 
@@ -229,7 +250,9 @@ const Chat: React.FC = () => {
         }
       );
 
-      setMessages(response.data);
+      // Handle both old format (direct array) and new format (wrapped in data property)
+      const messagesData = Array.isArray(response.data) ? response.data : response.data.data;
+      setMessages(messagesData || []);
       setLoading(false);
     } catch (error: any) {
       console.error('Error fetching messages:', error);
@@ -314,8 +337,21 @@ const Chat: React.FC = () => {
         }
       );
 
-      // Add new message to the list
-      setMessages((prev) => [...prev, response.data]);
+      // Extract the message data from response
+      // Backend spreads document fields directly, so we need to exclude the success "message" field
+      const { message: successMessage, ...rawMessageData } = response.data;
+
+      // Handle Mongoose document format (with _doc) or plain object
+      const messageData = rawMessageData._doc || rawMessageData;
+
+      // Ensure the message has an _id for the key extractor
+      if (messageData._id) {
+        // Add new message to the list
+        setMessages((prev) => [...prev, messageData]);
+      } else {
+        console.error('Received message without _id:', messageData);
+        console.error('Raw response:', response.data);
+      }
 
       // Scroll to bottom
       setTimeout(() => {
@@ -769,7 +805,12 @@ const Chat: React.FC = () => {
           <View style={styles.inputContainer}>
             <TextInput
               ref={inputRef}
-              style={[styles.input, { backgroundColor: colors.input, color: colors.text }]}
+              style={[styles.input, {
+                backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
+                color: theme === 'dark' ? '#ffffff' : '#000000',
+                borderWidth: 1,
+                borderColor: theme === 'dark' ? '#374151' : '#e5e7eb'
+              }]}
               placeholder="Type your message..."
               placeholderTextColor={colors.placeholder}
               value={input}

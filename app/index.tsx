@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import soundManager from '../utils/soundManager';
 
 const API_URL = "http://192.168.100.6:10000/api/auth"; // Your computer's IP address
 
@@ -29,6 +30,16 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Load sounds when component mounts
+  useEffect(() => {
+    soundManager.loadSounds();
+
+    // Cleanup when component unmounts
+    return () => {
+      soundManager.unloadSounds();
+    };
+  }, []);
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -44,16 +55,43 @@ const LoginScreen = () => {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await res.json();
+      const response = await res.json();
+
+      // Handle new response format: response.data contains the actual data
+      const data = response.data || response;
 
       if (res.ok && data?.token) {
         await AsyncStorage.setItem("token", data.token);
         await AsyncStorage.setItem("username", username);
         await AsyncStorage.setItem("fullname", data.user?.fullname || username);
+
+        // Store userId for socket connection (CRITICAL for SOS resolved notifications)
+        // Backend sends user.id, not user._id for login response
+        const userId = data.user?.id || data.user?._id;
+        if (userId) {
+          await AsyncStorage.setItem("userId", userId);
+          // Store complete userData object for socket initialization
+          await AsyncStorage.setItem("userData", JSON.stringify({
+            userId: userId,
+            username: username,
+            fullname: data.user?.fullname || username
+          }));
+        }
+
+        // Handle avatar - save it if user has one, otherwise remove old avatar
+        if (data.user?.avatar) {
+          await AsyncStorage.setItem("avatar", data.user.avatar);
+        } else {
+          await AsyncStorage.removeItem("avatar");
+        }
+
+        // Play login success sound
+        await soundManager.playLoginSuccess();
+
         Alert.alert("Success", "Welcome back!");
         router.push("/Home");
       } else {
-        Alert.alert("Login Failed", data.message || "Invalid credentials.");
+        Alert.alert("Login Failed", response.message || "Invalid credentials.");
       }
     } catch (error) {
       Alert.alert("Error", "Unable to connect. Please check your internet connection.");

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -40,16 +41,64 @@ const LocationHistory = () => {
 
   const getCurrentLocation = async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required to use this feature.');
+      // Check if location services are enabled
+      const isLocationEnabled = await Location.hasServicesEnabledAsync();
+      if (!isLocationEnabled) {
+        Alert.alert(
+          'Location Services Disabled',
+          'Please enable Location Services in your device settings.\n\n' +
+          'Go to:\n' +
+          '• Android: Settings → Location → Turn ON\n' +
+          '• iOS: Settings → Privacy → Location Services → Turn ON',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings()
+            }
+          ]
+        );
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
+      // Request permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Denied',
+          'Location permission is required to use this feature.\n\n' +
+          'Please allow location access in your app settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Settings',
+              onPress: () => Linking.openSettings()
+            }
+          ]
+        );
+        return;
+      }
+
+      // Get location with timeout
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeout: 15000,
+        maximumAge: 10000,
+      });
       setCurrentLocation(location);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting current location:', error);
+
+      let errorMessage = 'Unable to get your current location. ';
+      if (error.message?.includes('timeout')) {
+        errorMessage += 'GPS signal is weak. Please move to an open area.';
+      } else if (error.message?.includes('unavailable') || error.message?.includes('settings')) {
+        errorMessage += 'Please ensure Location Services are enabled.';
+      } else {
+        errorMessage += 'Please try again in a moment.';
+      }
+
+      Alert.alert('Location Error', errorMessage);
     }
   };
 

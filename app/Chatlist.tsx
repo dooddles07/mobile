@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -148,9 +148,12 @@ const ChatList: React.FC = () => {
 
       const endTime = Date.now();
       console.log(`API request completed in ${endTime - startTime}ms`);
-      console.log(`Found ${response.data.length} conversations`);
 
-      setConversations(response.data);
+      // Handle both old format (direct array) and new format (wrapped in data property)
+      const conversationsData = Array.isArray(response.data) ? response.data : response.data.data;
+      console.log(`Found ${conversationsData?.length || 0} conversations`);
+
+      setConversations(conversationsData || []);
       setLoading(false);
       setRefreshing(false);
     } catch (error: any) {
@@ -252,16 +255,39 @@ const ChatList: React.FC = () => {
   }, [router]);
 
   const handleStartNewChat = useCallback(async () => {
+    console.log('🚀 Starting new chat...');
     const conversation = await getOrCreateConversation();
-    if (conversation) {
-      router.push({
-        pathname: "./Chat",
-        params: {
-          conversationId: conversation._id,
-          adminName: conversation.adminName || 'ResqYOU Support'
-        }
-      });
+
+    if (!conversation) {
+      console.error('❌ Failed to create conversation - received null/undefined');
+      return;
     }
+
+    console.log('✅ Conversation created/found:', {
+      _id: conversation._id,
+      adminName: conversation.adminName,
+      hasId: !!conversation._id
+    });
+
+    if (!conversation._id) {
+      console.error('❌ Conversation object missing _id property');
+      console.log('Full conversation object:', JSON.stringify(conversation, null, 2));
+      Alert.alert('Error', 'Failed to create conversation. Please try again.');
+      return;
+    }
+
+    console.log('📍 Navigating to Chat screen with params:', {
+      conversationId: conversation._id,
+      adminName: conversation.adminName || 'ResqYOU Support'
+    });
+
+    router.push({
+      pathname: "./Chat",
+      params: {
+        conversationId: conversation._id,
+        adminName: conversation.adminName || 'ResqYOU Support'
+      }
+    });
   }, [router]);
 
   const handleBackPress = useCallback(() => {
@@ -330,12 +356,7 @@ const ChatList: React.FC = () => {
             {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.headerRight}
-          onPress={handleStartNewChat}
-        >
-          <Ionicons name="add-circle-outline" size={28} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerRight} />
       </View>
 
       {/* Chat List */}

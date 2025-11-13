@@ -35,6 +35,20 @@ const RecoveryPass = () => {
   const [countdown, setCountdown] = useState(900);
   const [canResend, setCanResend] = useState(false);
 
+  // Password requirement states
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    minLength: false,
+    passwordsMatch: false
+  });
+
+  // Validate password requirements
+  useEffect(() => {
+    setPasswordRequirements({
+      minLength: newPassword.length >= 6,
+      passwordsMatch: newPassword.length > 0 && newPassword === confirmPassword
+    });
+  }, [newPassword, confirmPassword]);
+
   useEffect(() => {
     if (countdown > 0) {
       const timer = setInterval(() => {
@@ -277,8 +291,35 @@ const RecoveryPass = () => {
             </View>
 
             <View style={styles.passwordHintContainer}>
-              <Text style={[styles.passwordHint, { color: colors.textSecondary }]}>• Password must be at least 6 characters</Text>
-              <Text style={[styles.passwordHint, { color: colors.textSecondary }]}>• Passwords must match</Text>
+              <View style={styles.requirementRow}>
+                <Ionicons
+                  name={passwordRequirements.minLength ? "checkmark-circle" : "close-circle"}
+                  size={18}
+                  color={passwordRequirements.minLength ? "#10b981" : "#ef4444"}
+                  style={styles.requirementIcon}
+                />
+                <Text style={[
+                  styles.passwordHint,
+                  { color: passwordRequirements.minLength ? "#10b981" : colors.textSecondary }
+                ]}>
+                  Password must be at least 6 characters
+                </Text>
+              </View>
+
+              <View style={styles.requirementRow}>
+                <Ionicons
+                  name={passwordRequirements.passwordsMatch ? "checkmark-circle" : "close-circle"}
+                  size={18}
+                  color={passwordRequirements.passwordsMatch ? "#10b981" : (confirmPassword.length > 0 ? "#ef4444" : "#9ca3af")}
+                  style={styles.requirementIcon}
+                />
+                <Text style={[
+                  styles.passwordHint,
+                  { color: passwordRequirements.passwordsMatch ? "#10b981" : (confirmPassword.length > 0 ? "#ef4444" : colors.textSecondary) }
+                ]}>
+                  Passwords must match
+                </Text>
+              </View>
             </View>
 
             <TouchableOpacity
@@ -426,9 +467,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingLeft: 4,
   },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requirementIcon: {
+    marginRight: 8,
+  },
   passwordHint: {
     fontSize: 12,
     lineHeight: 18,
+    flex: 1,
   },
   button: {
     backgroundColor: '#14b8a6',

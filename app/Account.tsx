@@ -102,7 +102,10 @@ const Account: React.FC = () => {
         },
       });
 
-      const data = await response.json();
+      const apiResponse = await response.json();
+
+      // Handle new response format: apiResponse.data contains the actual data
+      const data = apiResponse.data || apiResponse;
 
       if (response.ok && data.user) {
         const userData = {
@@ -123,7 +126,7 @@ const Account: React.FC = () => {
           await AsyncStorage.setItem('avatar', userData.avatar);
         }
       } else {
-        throw new Error(data.message || 'Failed to load profile');
+        throw new Error(apiResponse.message || 'Failed to load profile');
       }
 
     } catch (error) {
@@ -192,19 +195,24 @@ const Account: React.FC = () => {
         }),
       });
 
-      const data = await response.json();
+      const apiResponse = await response.json();
+
+      // Handle new response format
+      const data = apiResponse.data || apiResponse;
 
       if (response.ok) {
         Alert.alert("Success", "Profile updated successfully!");
 
         // Update local storage
-        await AsyncStorage.setItem('username', data.user.username);
-        await AsyncStorage.setItem('email', data.user.email);
+        if (data.user) {
+          await AsyncStorage.setItem('username', data.user.username);
+          await AsyncStorage.setItem('email', data.user.email);
+        }
 
         // Update original profile state
         setOriginalProfile(profile);
       } else {
-        Alert.alert("Error", data.message || "Failed to update profile");
+        Alert.alert("Error", apiResponse.message || "Failed to update profile");
       }
     } catch (error) {
       Alert.alert("Error", "Network error. Please try again.");
@@ -306,14 +314,20 @@ const Account: React.FC = () => {
                 body: JSON.stringify({ avatar: base64data }),
               });
 
-              const data = await uploadResponse.json();
+              const apiResponse = await uploadResponse.json();
+
+              // Handle new response format
+              const data = apiResponse.data || apiResponse;
 
               if (uploadResponse.ok) {
-                setProfile(prev => ({ ...prev, avatar: data.avatar }));
-                await AsyncStorage.setItem('avatar', data.avatar);
+                const avatarUrl = data.avatar || data.user?.avatar;
+                if (avatarUrl) {
+                  setProfile(prev => ({ ...prev, avatar: avatarUrl }));
+                  await AsyncStorage.setItem('avatar', avatarUrl);
+                }
                 Alert.alert('Success', 'Profile picture updated successfully!');
               } else {
-                Alert.alert('Error', data.message || 'Failed to upload image');
+                Alert.alert('Error', apiResponse.message || 'Failed to upload image');
               }
             } catch (uploadError) {
               console.error('Upload error:', uploadError);
