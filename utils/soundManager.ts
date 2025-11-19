@@ -19,7 +19,7 @@ class SoundManager {
       );
       this.loginSuccessSound = sound;
     } catch (error) {
-      console.error('Error loading sounds:', error);
+      // Error loading sounds
     }
   }
 
@@ -42,7 +42,7 @@ class SoundManager {
       );
       this.sosSound = sound;
     } catch (error) {
-      console.error('Error loading SOS sound:', error);
+      // Error loading SOS sound
     }
   }
 
@@ -53,7 +53,7 @@ class SoundManager {
         await this.loginSuccessSound.playAsync();
       }
     } catch (error) {
-      console.error('Error playing login success sound:', error);
+      // Error playing login success sound
     }
   }
 
@@ -67,10 +67,9 @@ class SoundManager {
       if (this.sosSound) {
         await this.sosSound.setPositionAsync(0);
         await this.sosSound.playAsync();
-        console.log('SOS sound started playing (looping)');
       }
     } catch (error) {
-      console.error('Error playing SOS sound:', error);
+      // Error playing SOS sound
     }
   }
 
@@ -80,10 +79,9 @@ class SoundManager {
         await this.sosSound.stopAsync();
         await this.sosSound.unloadAsync();
         this.sosSound = null;
-        console.log('SOS sound stopped and unloaded');
       }
     } catch (error) {
-      console.error('Error stopping SOS sound:', error);
+      // Error stopping SOS sound
     }
   }
 
@@ -99,7 +97,7 @@ class SoundManager {
         this.sosSound = null;
       }
     } catch (error) {
-      console.error('Error unloading sounds:', error);
+      // Error unloading sounds
     }
   }
 }

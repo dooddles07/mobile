@@ -25,7 +25,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
   let token: string | null = null;
 
   if (!Device.isDevice) {
-    console.log('Push notifications only work on physical devices');
     return null;
   }
 
@@ -41,21 +40,15 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push notification permissions');
       return null;
     }
 
     // Get the Expo push token
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-    if (!projectId) {
-      console.warn('Project ID not found. Add it to app.json under extra.eas.projectId');
-    }
 
     token = (await Notifications.getExpoPushTokenAsync({
       projectId: projectId || 'your-project-id',
     })).data;
-
-    console.log('Push notification token:', token);
 
     // Android-specific channel setup
     if (Platform.OS === 'android') {
@@ -78,7 +71,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
     return token;
   } catch (error) {
-    console.error('Error registering for push notifications:', error);
     return null;
   }
 }

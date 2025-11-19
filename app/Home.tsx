@@ -35,19 +35,16 @@ const LOCATION_TASK_NAME = "background-location-task";
 // Define the background task
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
   if (error) {
-    console.error("Location task error:", error);
     return;
   }
   if (data) {
     const { locations } = data;
     const location = locations[0];
-    
+
     if (location) {
       try {
         const username = await AsyncStorage.getItem("username");
         const { latitude, longitude } = location.coords;
-        
-        console.log(`📍 Background location update: ${latitude}, ${longitude}`);
 
         const backgroundPayload = {
           username,
@@ -55,14 +52,10 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
           longitude: Number(longitude),
         };
 
-        console.log('🔄 Background payload:', backgroundPayload);
-
         // Send location update to backend
         const bgResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, backgroundPayload);
-
-        console.log("✅ Background location updated successfully:", bgResponse.data);
       } catch (error) {
-        console.error("Error updating location in background:", error);
+        // Silent failure for background tasks
       }
     }
   }
@@ -83,6 +76,7 @@ const Home = () => {
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const statusCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketInitialized = useRef<boolean>(false);
+  const sosResolveInProgressRef = useRef<boolean>(false);
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
     ? ["#f0fdfa", "#ccfbf1", "#99f6e4"]
@@ -101,7 +95,6 @@ const Home = () => {
         await Linking.openURL('app-settings:');
       }
     } catch (error) {
-      console.error('Error opening location settings:', error);
       // Fallback to app settings if location settings fails
       await Linking.openSettings();
     }
@@ -131,18 +124,13 @@ const Home = () => {
 
             // Listen for SOS resolved event from backend
             onSOSResolved(async (data) => {
-              console.log("✅ Received sos-resolved event from server:", data);
-              console.log("📍 Current SOS status:", sosActive);
               await handleAdminResolve();
             });
-
-            console.log("Socket initialized and listening for sos-resolved events");
           } catch (error) {
-            console.error("Failed to initialize socket:", error);
+            // Socket initialization failed silently
           }
         }
       } catch (error) {
-        console.error("Failed to retrieve user data:", error);
         setUsername("Error");
         setFullname("Error");
       }
@@ -181,7 +169,7 @@ const Home = () => {
         startStatusChecking();
       }
     } catch (error) {
-      console.log("No active SOS found");
+      // No active SOS found
     }
   };
 
@@ -196,13 +184,11 @@ const Home = () => {
 
         // If no active SOS found, it might have been resolved
         if (!response.data.hasActiveSOS) {
-          console.log("Fallback status check: No active SOS found");
           await handleAdminResolve();
         }
       } catch (error: any) {
         // 404 means no active SOS
         if (error?.response?.status === 404) {
-          console.log("Fallback status check: SOS not found (404)");
           await handleAdminResolve();
         }
       }
@@ -217,25 +203,34 @@ const Home = () => {
   };
 
   const handleAdminResolve = async () => {
-    console.log("SOS has been resolved by admin");
+    // Prevent duplicate calls - only process if one isn't already in progress
+    if (sosResolveInProgressRef.current) {
+      return;
+    }
 
-    // Stop all tracking and animations
-    await stopLocationTracking();
-    stopPulseAnimation();
-    stopStatusChecking();
+    sosResolveInProgressRef.current = true;
 
-    // Stop SOS sound
-    await soundManager.stopSOSSound();
+    try {
+      // Stop all tracking and animations
+      await stopLocationTracking();
+      stopPulseAnimation();
+      stopStatusChecking();
 
-    // Update UI
-    setSosActive(false);
+      // Stop SOS sound
+      await soundManager.stopSOSSound();
 
-    // Notify user
-    Alert.alert(
-      "SOS Resolved",
-      "Your emergency has been resolved by emergency responders. Stay safe!",
-      [{ text: "OK" }]
-    );
+      // Update UI
+      setSosActive(false);
+
+      // Notify user
+      Alert.alert(
+        "SOS Resolved",
+        "Your emergency has been resolved by emergency responders. Stay safe!",
+        [{ text: "OK" }]
+      );
+    } finally {
+      sosResolveInProgressRef.current = false;
+    }
   };
 
   const startPulseAnimation = () => {
@@ -265,17 +260,13 @@ const Home = () => {
 
   const startLocationTracking = async () => {
   const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-  
+
   if (foregroundStatus !== "granted") {
     Alert.alert("Permission Denied", "Location permission is required.");
     return;
   }
 
   const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-  
-  if (backgroundStatus !== "granted") {
-    console.log("Background permission not granted, using foreground only");
-  }
 
   // Update location every 60 seconds (1 minute)
   locationIntervalRef.current = setInterval(async () => {
@@ -286,24 +277,17 @@ const Home = () => {
 
       const { latitude, longitude, accuracy: locationAccuracy } = location.coords;
 
-      console.log(`📍 Updating location: ${latitude}, ${longitude} (${Math.round(locationAccuracy || 0)}m)`);
-
       const updatePayload = {
         username,
         latitude: Number(latitude),
         longitude: Number(longitude),
       };
 
-      console.log('🔄 Sending location update:', updatePayload);
-
       const updateResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, updatePayload);
 
-      console.log("✅ Location update response:", updateResponse.data);
-
       setLastUpdate(new Date());
-      console.log("✅ Location updated successfully at", new Date().toLocaleTimeString());
     } catch (error) {
-      console.error("Error updating location:", error);
+      // Location update error
     }
   }, 60000) as any; // Type assertion to fix TypeScript issue
 
@@ -318,9 +302,8 @@ const Home = () => {
         notificationColor: "#ff3b3b",
       },
     });
-    console.log("Background location tracking started");
   } catch (error) {
-    console.log("Background tracking not available:", error);
+    // Background tracking not available
   }
 };
 
@@ -336,22 +319,15 @@ const Home = () => {
       const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
       if (hasStarted) {
         await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-        console.log("Background location tracking stopped");
       }
     } catch (error) {
-      console.log("Error stopping background tracking:", error);
+      // Error stopping background tracking
     }
 
     setLastUpdate(null);
   };
 
   const handleSOS = async () => {
-    // Log API configuration for debugging
-    console.log('🔧 API Configuration:', {
-      BASE_URL: API_ENDPOINTS.BASE_URL,
-      SOS: API_ENDPOINTS.SOS,
-      FULL_ENDPOINT: `${API_ENDPOINTS.SOS}/send`
-    });
 
     // Validate username is loaded before allowing SOS
     if (!username || username === "Loading..." || username === "Guest" || username === "Error") {
@@ -398,7 +374,6 @@ const Home = () => {
                 setSosActive(false);
                 Alert.alert("SOS Cancelled", "Your SOS alert has been cancelled and location tracking stopped.");
               } catch (error: any) {
-                console.error("Cancel SOS error:", error);
 
                 // If 404, it means the SOS was already resolved or cancelled
                 if (error?.response?.status === 404) {
@@ -473,7 +448,6 @@ const Home = () => {
           maximumAge: 10000, // Accept locations up to 10 seconds old
         });
       } catch (locationError: any) {
-        console.error("Error getting location:", locationError);
 
         // Provide specific error messages
         let errorMessage = "Unable to get your current location. ";
@@ -509,10 +483,6 @@ const Home = () => {
 
       const { latitude, longitude, accuracy: locationAccuracy } = location.coords;
 
-      console.log(`Initial location accuracy: ${Math.round(locationAccuracy || 0)} meters`);
-      console.log('📍 Location coordinates:', { latitude, longitude });
-      console.log('👤 Username:', username);
-
       // Validate data before sending
       if (!username || username === 'Loading...' || username === 'Guest') {
         throw new Error('Invalid username. Please ensure you are logged in.');
@@ -528,17 +498,11 @@ const Home = () => {
         longitude: Number(longitude),
       };
 
-      console.log('📤 Sending SOS payload:', sosPayload);
-      console.log('📤 API endpoint:', `${API_ENDPOINTS.SOS}/send`);
-
       // Step 4: Send initial SOS to backend
       const response = await axios.post(
         `${API_ENDPOINTS.SOS}/send`,
         sosPayload
       );
-
-      console.log("✅ Initial SOS response:", response.data);
-      console.log("✅ Response status:", response.status);
 
       startPulseAnimation();
       setSosActive(true);
@@ -565,22 +529,10 @@ const Home = () => {
         [{ text: "OK" }]
       );
     } catch (error) {
-      console.error("SOS Error:", error);
-
       let errorTitle = "SOS Failed";
       let errorMessage = "Unable to send SOS alert.";
 
       if (axios.isAxiosError(error)) {
-        console.error("Axios Error Details:", {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-          config: {
-            url: error.config?.url,
-            method: error.config?.method,
-            baseURL: error.config?.baseURL
-          }
-        });
 
         if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
           errorMessage = "Request timed out. The server might be sleeping (Render free tier). Please try again in 30 seconds.";
@@ -605,7 +557,6 @@ const Home = () => {
           errorMessage = "No response from server. The backend might be sleeping (Render free tier takes ~30s to wake up). Please wait and try again.";
         }
       } else if (error instanceof Error) {
-        console.error("JavaScript Error:", error.message);
         errorMessage = error.message;
       }
 

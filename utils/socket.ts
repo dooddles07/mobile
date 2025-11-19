@@ -29,7 +29,7 @@ export const initializeSocket = async (): Promise<Socket> => {
         const userData = JSON.parse(userDataStr);
         userId = userData?.userId;
       } catch (e) {
-        console.error('Error parsing userData:', e);
+        // Error parsing userData
       }
     }
 
@@ -41,9 +41,7 @@ export const initializeSocket = async (): Promise<Socket> => {
     // Get username
     username = await AsyncStorage.getItem('username');
 
-    if (!userId && !username) {
-      console.warn('⚠️ No userId or username found in storage. Socket will connect but won\'t join user room.');
-    }
+    // Socket will connect but won't join user room if no userId or username
 
     socket = io(API_ENDPOINTS.BASE_URL, {
       transports: ['websocket', 'polling'],
@@ -54,51 +52,38 @@ export const initializeSocket = async (): Promise<Socket> => {
     });
 
     socket.on('connect', () => {
-      console.log('✅ Socket connected:', socket?.id);
-
       // Join user's personal room for receiving SOS resolved notifications
       if (userId) {
         socket?.emit('join', userId);
-        console.log('✅ Joined personal room with userId:', userId);
       }
 
       // Also join by username as fallback
       if (username) {
         socket?.emit('join', `user-${username}`);
-        console.log('✅ Joined username room:', `user-${username}`);
-      }
-
-      if (!userId && !username) {
-        console.warn('⚠️ Cannot join personal room - no userId or username available');
       }
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
+      // Socket disconnected
     });
 
     socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+      // Socket connection error
     });
 
     socket.on('reconnect', async (attemptNumber) => {
-      console.log(`🔄 Socket reconnected after ${attemptNumber} attempts`);
-
       // Rejoin user rooms after reconnection
       if (userId) {
         socket?.emit('join', userId);
-        console.log('✅ Rejoined personal room after reconnection');
       }
 
       if (username) {
         socket?.emit('join', `user-${username}`);
-        console.log('✅ Rejoined username room after reconnection');
       }
     });
 
     return socket;
   } catch (error) {
-    console.error('Error initializing socket:', error);
     throw error;
   }
 };
@@ -117,14 +102,17 @@ export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
     socket = null;
-    console.log('Socket disconnected manually');
   }
 };
 
 /**
  * Listen for SOS resolved event
+ * Removes any previous listeners to prevent duplicates
  */
 export const onSOSResolved = (callback: (data: any) => void) => {
+  // Remove all existing listeners first to prevent duplicates
+  socket?.off('sos-resolved');
+  // Register the new listener
   socket?.on('sos-resolved', callback);
 };
 
