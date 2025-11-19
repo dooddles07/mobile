@@ -6,8 +6,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import API_ENDPOINTS from '../config/api';
 
-const API_BASE = "http://192.168.100.6:10000"; // Your computer's IP address
+const API_BASE = API_ENDPOINTS.BASE_URL;
 
 // Types
 interface Conversation {

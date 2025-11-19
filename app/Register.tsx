@@ -17,8 +17,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import API_ENDPOINTS from '../config/api';
 
-const API_URL = "http://192.168.100.6:10000/api/auth";
+const API_URL = API_ENDPOINTS.AUTH;
 
 const Register = () => {
   const { theme, colors } = useTheme();

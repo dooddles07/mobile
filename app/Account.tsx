@@ -19,6 +19,7 @@ import { router } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme, Theme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import API_ENDPOINTS from '../config/api';
 
 // Types
 interface UserProfile {
@@ -31,7 +32,7 @@ interface UserProfile {
 
 // Constants
 const ACCENT_COLOR = "#14b8a6";
-const API_BASE_URL = "http://192.168.100.6:10000/api";
+const API_BASE_URL = `${API_ENDPOINTS.BASE_URL}/api`;
 
 const Account: React.FC = () => {
   const { theme, toggleTheme: toggleGlobalTheme, colors } = useTheme();

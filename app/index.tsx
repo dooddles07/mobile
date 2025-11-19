@@ -19,8 +19,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import soundManager from '../utils/soundManager';
+import API_ENDPOINTS from '../config/api';
 
-const API_URL = "http://192.168.100.6:10000/api/auth"; // Your computer's IP address
+const API_URL = API_ENDPOINTS.AUTH;
 
 const LoginScreen = () => {
   const { theme, colors } = useTheme();
@@ -88,7 +89,7 @@ const LoginScreen = () => {
         // Play login success sound
         await soundManager.playLoginSuccess();
 
-        Alert.alert("Success", "Welcome back!");
+        Alert.alert("Success", "Login successful!");
         router.push("/Home");
       } else {
         Alert.alert("Login Failed", response.message || "Invalid credentials.");
@@ -124,8 +125,8 @@ const LoginScreen = () => {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={[styles.title, { color: colors.text }]}>Welcome Back</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Sign in to continue</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Welcome</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Sign in to your account</Text>
           </View>
 
           {/* Input Fields */}

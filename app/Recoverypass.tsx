@@ -16,8 +16,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import API_ENDPOINTS from '../config/api';
 
-const API_URL = 'http://192.168.100.6:10000/api/auth';
+const API_URL = API_ENDPOINTS.AUTH;
 
 const RecoveryPass = () => {
   const router = useRouter();

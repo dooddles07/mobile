@@ -346,6 +346,13 @@ const Home = () => {
   };
 
   const handleSOS = async () => {
+    // Log API configuration for debugging
+    console.log('🔧 API Configuration:', {
+      BASE_URL: API_ENDPOINTS.BASE_URL,
+      SOS: API_ENDPOINTS.SOS,
+      FULL_ENDPOINT: `${API_ENDPOINTS.SOS}/send`
+    });
+
     // Validate username is loaded before allowing SOS
     if (!username || username === "Loading..." || username === "Guest" || username === "Error") {
       Alert.alert(
@@ -559,19 +566,60 @@ const Home = () => {
       );
     } catch (error) {
       console.error("SOS Error:", error);
-      console.error(
-        axios.isAxiosError(error)
-          ? error.response?.data || error.message
-          : error
-  );
-  Alert.alert(
-    "Error",
-    "Failed to send location. Please check your internet connection and try again."
-  );
-  stopPulseAnimation();
-} finally {
-  setLoading(false);
-}
+
+      let errorTitle = "SOS Failed";
+      let errorMessage = "Unable to send SOS alert.";
+
+      if (axios.isAxiosError(error)) {
+        console.error("Axios Error Details:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            baseURL: error.config?.baseURL
+          }
+        });
+
+        if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+          errorMessage = "Request timed out. The server might be sleeping (Render free tier). Please try again in 30 seconds.";
+        } else if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        } else if (error.response) {
+          // Server responded with error
+          const status = error.response.status;
+          const serverMessage = error.response.data?.message || error.response.data?.error;
+
+          if (status === 400) {
+            errorMessage = `Invalid data: ${serverMessage || 'Please check location permissions'}`;
+          } else if (status === 404) {
+            errorMessage = "SOS endpoint not found. Please contact support.";
+          } else if (status === 500) {
+            errorMessage = `Server error: ${serverMessage || 'Please try again'}`;
+          } else {
+            errorMessage = serverMessage || `Server error (${status}). Please try again.`;
+          }
+        } else if (error.request) {
+          // Request made but no response
+          errorMessage = "No response from server. The backend might be sleeping (Render free tier takes ~30s to wake up). Please wait and try again.";
+        }
+      } else if (error instanceof Error) {
+        console.error("JavaScript Error:", error.message);
+        errorMessage = error.message;
+      }
+
+      Alert.alert(errorTitle, errorMessage, [
+        { text: "OK" },
+        {
+          text: "Retry",
+          onPress: () => handleSOS()
+        }
+      ]);
+      stopPulseAnimation();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatLastUpdate = () => {
