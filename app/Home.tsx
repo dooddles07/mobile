@@ -12,6 +12,7 @@ import {
   ScrollView,
   Linking,
   Platform,
+  AppState,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,7 +24,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import axios from "axios";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { initializeSocket, onSOSResolved, removeListener, disconnectSocket } from "../utils/socket";
+import { initializeSocket, onSOSResolved, onSOSCancelled, removeListener, disconnectSocket } from "../utils/socket";
 import soundManager from "../utils/soundManager";
 import API_ENDPOINTS from "../config/api";
 
@@ -35,6 +36,7 @@ const LOCATION_TASK_NAME = "background-location-task";
 // Define the background task
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
   if (error) {
+    console.error('🔴 Background location task error:', error);
     return;
   }
   if (data) {
@@ -46,6 +48,11 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
         const username = await AsyncStorage.getItem("username");
         const { latitude, longitude } = location.coords;
 
+        const backgroundTime = new Date().toLocaleTimeString();
+        console.log(`\n🌐 [${backgroundTime}] BACKGROUND location update triggered`);
+        console.log(`   📍 Background Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        console.log(`   👤 Username: ${username}`);
+
         const backgroundPayload = {
           username,
           latitude: Number(latitude),
@@ -54,8 +61,9 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
 
         // Send location update to backend
         const bgResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, backgroundPayload);
+        console.log(`   ✅ Background location update sent successfully\n`);
       } catch (error) {
-        // Silent failure for background tasks
+        console.error('   ❌ Background location update failed:', error);
       }
     }
   }
@@ -70,16 +78,22 @@ const Home = () => {
   const [loading, setLoading] = useState(false);
   const [sosActive, setSosActive] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [locationEnabled, setLocationEnabled] = useState(true);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(true);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const router = useRouter();
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const locationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const statusCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const locationCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketInitialized = useRef<boolean>(false);
   const sosResolveInProgressRef = useRef<boolean>(false);
+  const locationAlertShownRef = useRef<boolean>(false); // Track if we've shown alert this session
+  const appState = useRef(AppState.currentState);
+  const appStateSubscriptionRef = useRef<any>(null);
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
-    ? ["#f0fdfa", "#ccfbf1", "#99f6e4"]
+    ? ["#fef2f2", "#fee2e2", "#fecaca"]
     : ["#0f172a", "#1e293b", "#334155"];
 
   // Helper function to open device location settings
@@ -100,9 +114,35 @@ const Home = () => {
     }
   };
 
+  // Check location status (services enabled + permissions granted)
+  const checkLocationStatus = async () => {
+    try {
+      // Check if location services are enabled on device
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      setLocationEnabled(servicesEnabled);
+
+      // Check if app has location permission
+      const { status } = await Location.getForegroundPermissionsAsync();
+      setLocationPermissionGranted(status === 'granted');
+
+      return servicesEnabled && status === 'granted';
+    } catch (error) {
+      console.error('Error checking location status:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        // Check if user is authenticated
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          // Not logged in, redirect to login screen
+          router.replace("/");
+          return;
+        }
+
         const storedUsername = await AsyncStorage.getItem("username");
         const storedFullname = await AsyncStorage.getItem("fullname");
         const storedAvatar = await AsyncStorage.getItem("avatar");
@@ -111,7 +151,8 @@ const Home = () => {
         setFullname(storedFullname || storedUsername || "Guest");
         setAvatar(storedAvatar);
 
-        // Check if user has active SOS on app start
+        // Check if user has active SOS on app start (ONLY to resume existing sessions)
+        // This will NOT create new SOS - it only detects if user already has an active one
         if (storedUsername) {
           await checkActiveSOS(storedUsername);
         }
@@ -122,14 +163,70 @@ const Home = () => {
             await initializeSocket();
             socketInitialized.current = true;
 
-            // Listen for SOS resolved event from backend
+            // Listen for SOS resolved event from backend (admin resolved)
             onSOSResolved(async (data) => {
+              console.log('🎯 SOS Resolved event received from admin');
               await handleAdminResolve();
+            });
+
+            // Listen for SOS cancelled event from backend (user cancelled from app)
+            onSOSCancelled(async (data) => {
+              console.log('🎯 SOS Cancelled event received');
+              await handleSOSCancelledEvent();
             });
           } catch (error) {
             // Socket initialization failed silently
           }
         }
+
+        // Check initial location status
+        await checkLocationStatus();
+
+        // Set up app state listener for instant response when app comes to foreground
+        appStateSubscriptionRef.current = AppState.addEventListener('change', async (nextAppState) => {
+          if (
+            appState.current.match(/inactive|background/) &&
+            nextAppState === 'active'
+          ) {
+            // App has come to foreground - immediately check location status
+            console.log('App came to foreground - checking location status immediately');
+            await checkLocationStatus();
+          }
+          appState.current = nextAppState;
+        });
+
+        // Set up periodic location check (every 10 seconds for faster response)
+        locationCheckIntervalRef.current = setInterval(async () => {
+          const isLocationOk = await checkLocationStatus();
+
+          // If location is disabled, show gentle reminder (only once per session)
+          if (!isLocationOk && !sosActive && !locationAlertShownRef.current) {
+            locationAlertShownRef.current = true; // Mark as shown
+
+            Alert.alert(
+              "⚠️ Location Disabled",
+              "Your location is turned off. Emergency SOS requires location to be enabled.\n\nTap the banner above to enable it.",
+              [
+                {
+                  text: "Enable Now",
+                  onPress: () => {
+                    openLocationSettings();
+                  },
+                },
+                {
+                  text: "Remind Me Later",
+                  style: "cancel",
+                  onPress: () => {
+                    // Reset after 5 minutes so we can remind again
+                    setTimeout(() => {
+                      locationAlertShownRef.current = false;
+                    }, 300000); // 5 minutes
+                  }
+                }
+              ]
+            );
+          }
+        }, 10000) as any; // Check every 10 seconds for faster response
       } catch (error) {
         setUsername("Error");
         setFullname("Error");
@@ -145,60 +242,158 @@ const Home = () => {
       if (statusCheckIntervalRef.current) {
         clearInterval(statusCheckIntervalRef.current);
       }
+      if (locationCheckIntervalRef.current) {
+        clearInterval(locationCheckIntervalRef.current);
+      }
+      // Clean up app state listener
+      if (appStateSubscriptionRef.current) {
+        appStateSubscriptionRef.current.remove();
+      }
       // Clean up socket listeners
       removeListener('sos-resolved');
+      removeListener('sos-cancelled');
       // Stop SOS sound on component unmount
       soundManager.stopSOSSound();
     };
   }, []);
 
   const checkActiveSOS = async (username: string) => {
+    console.log('🔍 Checking for active SOS on startup (to resume existing session)...');
+    console.log('   Username:', username);
+    console.log('   API Endpoint:', `${API_ENDPOINTS.SOS}/active/${username}`);
+
     try {
       const response = await axios.get(
         `${API_ENDPOINTS.SOS}/active/${username}`
       );
 
-      if (response.data.hasActiveSOS) {
+      console.log('✅ Active SOS check response:', JSON.stringify(response.data, null, 2));
+
+      // Handle different response formats from backend
+      const data = response.data?.data || response.data;
+      const hasActiveSOS = data?.hasActiveSOS;
+
+      console.log('   Has active SOS:', hasActiveSOS);
+
+      // ONLY resume if there's an EXPLICITLY active SOS
+      // This is for cases where user closed the app mid-SOS and reopened it
+      if (hasActiveSOS === true) {
+        console.log('🚨 Resuming existing SOS session from server...');
         setSosActive(true);
         startPulseAnimation();
         // Resume SOS sound
         await soundManager.playSOSSound();
+        console.log('   ✅ SOS sound started');
         // Resume location tracking
-        startLocationTracking();
-        // Start status checking as a fallback (less aggressive now)
+        await startLocationTracking();
+        console.log('   ✅ Location tracking started');
+        // Start status checking to detect when admin resolves
         startStatusChecking();
+        console.log('   ✅ Status checking started');
+        console.log('🎯 SOS session resumed successfully');
+      } else {
+        console.log('✅ No active SOS on server - button remains OFF');
       }
-    } catch (error) {
-      // No active SOS found
+    } catch (error: any) {
+      console.log('ℹ️  No active SOS to resume (expected for fresh start)');
+      // 404 or any error means no active SOS - this is fine and expected
     }
   };
 
   const startStatusChecking = () => {
-    // Check SOS status every 5 minutes as a fallback (socket is primary method)
-    // This is just a safety net in case socket connection fails
+    // CONSERVATIVE polling - ONLY runs when SOS is ACTIVE
+    // Only checks to detect if admin resolved the SOS
+    // Socket events are the primary method - this is just a fallback
+    console.log('⏱️  Starting status polling (checks every 10 seconds for admin resolution)');
+
     statusCheckIntervalRef.current = setInterval(async () => {
+      // CRITICAL: Only poll if SOS is still marked as active in app state
+      if (!sosActive) {
+        console.log('   ℹ️  SOS not active, skipping poll');
+        return;
+      }
+
+      console.log('🔄 Status check polling (SOS is active)...');
       try {
         const response = await axios.get(
           `${API_ENDPOINTS.SOS}/active/${username}`
         );
 
-        // If no active SOS found, it might have been resolved
-        if (!response.data.hasActiveSOS) {
+        console.log('   Server response:', response.data);
+
+        // Parse response carefully - handle nested data structure
+        const data = response.data?.data || response.data;
+        const hasActiveSOS = data?.hasActiveSOS;
+
+        // ONLY turn off if we explicitly get hasActiveSOS: false
+        // Don't turn off on undefined, null, or missing data
+        if (hasActiveSOS === false) {
+          console.log('   ⚡ Server says SOS resolved - turning off button');
           await handleAdminResolve();
+        } else if (hasActiveSOS === true) {
+          console.log('   ✅ SOS still active on server (correct)');
+        } else {
+          console.log('   ⚠️ Ambiguous response, keeping current state:', hasActiveSOS);
         }
       } catch (error: any) {
-        // 404 means no active SOS
+        console.error('   ❌ Status check error:', error.message);
+
+        // Check if this is a 404 - means SOS doesn't exist (was resolved)
         if (error?.response?.status === 404) {
-          await handleAdminResolve();
+          const errorData = error.response?.data;
+          console.log('   📋 404 Response data:', errorData);
+
+          // Check if response explicitly says hasActiveSOS: false
+          if (errorData?.hasActiveSOS === false) {
+            console.log('   ⚡ 404 with hasActiveSOS: false - SOS was resolved');
+            await handleAdminResolve();
+          } else {
+            console.log('   ⚡ 404 - SOS not found on server (likely resolved)');
+            await handleAdminResolve();
+          }
+        } else {
+          // For any other error (network, 500, etc), keep current state
+          // Don't turn off on network errors!
+          console.log('   ⚠️ Non-404 error, keeping SOS active (might be temporary network issue)');
         }
       }
-    }, 300000) as any; // Check every 5 minutes (300000ms) instead of 10 seconds
+    }, 10000) as any; // Check every 10 seconds
   };
 
   const stopStatusChecking = () => {
     if (statusCheckIntervalRef.current) {
       clearInterval(statusCheckIntervalRef.current);
       statusCheckIntervalRef.current = null;
+    }
+  };
+
+  // REMOVED: Automatic sync check that was turning ON SOS button
+  // SOS should ONLY be activated manually by user pressing the button
+
+  const handleSOSCancelledEvent = async () => {
+    // Handle SOS cancelled event from socket
+    // No alert shown since user already got feedback when they cancelled
+    if (sosResolveInProgressRef.current) {
+      return;
+    }
+
+    sosResolveInProgressRef.current = true;
+
+    try {
+      // Stop all tracking and animations
+      await stopLocationTracking();
+      stopPulseAnimation();
+      stopStatusChecking();
+
+      // Stop SOS sound
+      await soundManager.stopSOSSound();
+
+      // Update UI
+      setSosActive(false);
+
+      // No alert needed - user already knows they cancelled
+    } finally {
+      sosResolveInProgressRef.current = false;
     }
   };
 
@@ -222,7 +417,7 @@ const Home = () => {
       // Update UI
       setSosActive(false);
 
-      // Notify user
+      // Notify user - ONLY for admin-resolved cases
       Alert.alert(
         "SOS Resolved",
         "Your emergency has been resolved by emergency responders. Stay safe!",
@@ -268,8 +463,14 @@ const Home = () => {
 
   const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
 
+  console.log('📍 Location tracking started - Updates configured every 60 seconds (1 minute)');
+  console.log('⏰ First update will occur in 60 seconds');
+
   // Update location every 60 seconds (1 minute)
   locationIntervalRef.current = setInterval(async () => {
+    const updateTime = new Date().toLocaleTimeString();
+    console.log(`\n🔄 [${updateTime}] Sending location update...`);
+
     try {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.BestForNavigation,
@@ -283,15 +484,27 @@ const Home = () => {
         longitude: Number(longitude),
       };
 
+      console.log(`   📍 Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+      console.log(`   🎯 Accuracy: ${Math.round(locationAccuracy)}m`);
+      console.log(`   👤 Username: ${username}`);
+
       const updateResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, updatePayload);
+
+      console.log(`   ✅ Location update sent successfully`);
+      console.log(`   ⏰ Next update in 60 seconds\n`);
 
       setLastUpdate(new Date());
     } catch (error) {
-      // Location update error
+      console.error(`   ❌ Location update error:`, error);
     }
   }, 60000) as any; // Type assertion to fix TypeScript issue
 
   try {
+    console.log('🔔 Starting background location updates...');
+    console.log('   ⏱️  Time interval: 60 seconds (1 minute)');
+    console.log('   📏 Distance interval: 50 meters');
+    console.log('   🔊 Foreground service: SOS Active notification');
+
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
       accuracy: Location.Accuracy.Balanced,
       timeInterval: 60000,
@@ -302,16 +515,21 @@ const Home = () => {
         notificationColor: "#ff3b3b",
       },
     });
+
+    console.log('✅ Background location tracking started successfully\n');
   } catch (error) {
-    // Background tracking not available
+    console.error('❌ Background tracking setup error:', error);
   }
 };
 
   const stopLocationTracking = async () => {
+    console.log('🛑 Stopping location tracking...');
+
     // Stop interval
     if (locationIntervalRef.current) {
       clearInterval(locationIntervalRef.current);
       locationIntervalRef.current = null;
+      console.log('   ✅ Foreground location interval stopped');
     }
 
     // Stop background location updates
@@ -319,12 +537,14 @@ const Home = () => {
       const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
       if (hasStarted) {
         await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+        console.log('   ✅ Background location updates stopped');
       }
     } catch (error) {
-      // Error stopping background tracking
+      console.error('   ❌ Error stopping background tracking:', error);
     }
 
     setLastUpdate(null);
+    console.log('🏁 Location tracking fully stopped\n');
   };
 
   const handleSOS = async () => {
@@ -498,23 +718,38 @@ const Home = () => {
         longitude: Number(longitude),
       };
 
+      console.log('\n📤 Sending INITIAL SOS alert to backend...');
+      console.log(`   📍 Initial Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+      console.log(`   🎯 Accuracy: ${Math.round(locationAccuracy)}m`);
+      console.log(`   👤 Username: ${username}`);
+
       // Step 4: Send initial SOS to backend
       const response = await axios.post(
         `${API_ENDPOINTS.SOS}/send`,
         sosPayload
       );
 
+      console.log('   ✅ Initial SOS alert sent successfully!');
+
       startPulseAnimation();
       setSosActive(true);
       setLastUpdate(new Date());
 
+      console.log('\n🚨 SOS ACTIVATED! 🚨');
+      console.log('═══════════════════════════════════════');
+
       // Play SOS sound with looping
       await soundManager.playSOSSound();
+      console.log('🔊 SOS alarm sound started');
 
+      console.log('📍 Initiating location tracking...');
       await startLocationTracking();
 
-      // Socket will notify us when admin resolves, no need for aggressive polling
-      // Fallback polling is only started when resuming an existing SOS on app load
+      // Start status checking immediately for ultra-fast detection
+      // Socket is primary, but polling ensures we catch resolution within 10 seconds max
+      startStatusChecking();
+      console.log('⏱️  Status monitoring started (checks every 10 seconds)');
+      console.log('═══════════════════════════════════════\n');
 
       // Extract address safely from response - handle different response formats
       const sosData = response.data?.sos || response.data?.data?.sos || response.data;
@@ -614,6 +849,26 @@ const Home = () => {
           </View>
         )}
       </View>
+
+      {/* LOCATION WARNING BANNER */}
+      {(!locationEnabled || !locationPermissionGranted) && (
+        <TouchableOpacity
+          style={styles.locationWarningBanner}
+          onPress={openLocationSettings}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="warning" size={24} color="#fff" />
+          <View style={styles.locationWarningText}>
+            <Text style={styles.locationWarningTitle}>⚠️ Location Disabled</Text>
+            <Text style={styles.locationWarningSubtitle}>
+              {!locationEnabled
+                ? "Turn on device location for emergency protection"
+                : "Grant location permission in settings"}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       {/* MAIN CONTENT */}
       <ScrollView
@@ -720,8 +975,8 @@ const Home = () => {
               activeOpacity={0.7}
               onPress={() => router.push('/LocationHistory')}
             >
-              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(20, 184, 166, 0.1)' }]}>
-                <Ionicons name="location" size={24} color="#14b8a6" />
+              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(220, 38, 38, 0.1)' }]}>
+                <Ionicons name="location" size={24} color="#dc2626" />
               </View>
               <Text style={[styles.actionCardTitle, { color: colors.text }]}>Location</Text>
               <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>History</Text>
@@ -777,7 +1032,7 @@ const Home = () => {
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency Hotlines</Text>
             <TouchableOpacity onPress={() => router.push('/EmergencyHotline')}>
-              <Text style={styles.viewAllText}>View All</Text>
+              <Text style={[styles.viewAllText, { color: colors.warning }]}>View All</Text>
             </TouchableOpacity>
           </View>
 
@@ -870,7 +1125,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(20, 184, 166, 0.1)",
+    backgroundColor: "rgba(220, 38, 38, 0.1)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -934,16 +1189,16 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: "#14b8a6",
-    shadowColor: "#14b8a6",
+    backgroundColor: "#dc2626",
+    shadowColor: "#dc2626",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 10,
   },
   sosButtonActive: {
-    backgroundColor: "#ef4444",
-    shadowColor: "#ef4444",
+    backgroundColor: "#b91c1c",
+    shadowColor: "#b91c1c",
   },
   sosTouchable: {
     width: "100%",
@@ -1014,7 +1269,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 18,
     width: "100%",
-    shadowColor: "#14b8a6",
+    shadowColor: "#dc2626",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -1078,7 +1333,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#14b8a6',
+    color: '#f97316',
   },
   // Quick Actions
   quickActionsSection: {
@@ -1096,7 +1351,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     alignItems: "center",
-    shadowColor: "#14b8a6",
+    shadowColor: "#dc2626",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -1213,6 +1468,37 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#e5e7eb",
     marginHorizontal: 16,
+  },
+  // Location Warning Banner
+  locationWarningBanner: {
+    backgroundColor: "#f59e0b",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    shadowColor: "#f59e0b",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  locationWarningText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  locationWarningTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
+    marginBottom: 2,
+  },
+  locationWarningSubtitle: {
+    fontSize: 12,
+    color: "#fff",
+    opacity: 0.95,
   },
 });
 

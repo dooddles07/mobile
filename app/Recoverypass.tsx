@@ -155,7 +155,7 @@ const RecoveryPass = () => {
   };
 
   const gradientColors = theme === 'light'
-    ? ["#f0fdfa", "#ccfbf1", "#99f6e4"]
+    ? ["#fef2f2", "#fee2e2", "#fecaca"]
     : ["#0f172a", "#1e293b", "#334155"];
 
   return (
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 4,
     borderWidth: 1,
-    shadowColor: '#14b8a6',
+    shadowColor: '#f97316',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -482,13 +482,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   button: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: '#f97316',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: '#14b8a6',
+    shadowColor: '#f97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   resendText: {
-    color: '#14b8a6',
+    color: '#f97316',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -536,10 +536,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#14b8a6',
+    borderColor: '#f97316',
   },
   loginButtonText: {
-    color: '#14b8a6',
+    color: '#f97316',
     fontSize: 16,
     fontWeight: '700',
   },

@@ -31,7 +31,7 @@ interface UserProfile {
 }
 
 // Constants
-const ACCENT_COLOR = "#14b8a6";
+const ACCENT_COLOR = "#f97316";
 const API_BASE_URL = `${API_ENDPOINTS.BASE_URL}/api`;
 
 const Account: React.FC = () => {
@@ -418,7 +418,7 @@ const Account: React.FC = () => {
               console.error('Logout error:', error);
             } finally {
               await AsyncStorage.clear();
-              router.replace('/');
+              router.replace("/");
             }
           }
         }

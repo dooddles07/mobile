@@ -67,7 +67,7 @@ const EmergencyHotline = () => {
       description: 'Department of Social Welfare and Development - Social welfare assistance',
       icon: 'home',
       available: 'Mon-Fri 8AM-5PM',
-      color: '#14b8a6',
+      color: '#10b981',
     },
     {
       name: 'NCMH Crisis Hotline',
@@ -131,7 +131,7 @@ const EmergencyHotline = () => {
   };
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
-    ? ['#f0fdfa', '#ccfbf1', '#99f6e4']
+    ? ['#fef2f2', '#fee2e2', '#fecaca']
     : ['#0f172a', '#1e293b', '#334155'];
 
   return (
@@ -152,7 +152,7 @@ const EmergencyHotline = () => {
 
       {/* Info Banner */}
       <View style={[styles.infoBanner, { backgroundColor: colors.card }]}>
-        <Ionicons name="information-circle" size={24} color="#14b8a6" />
+        <Ionicons name="information-circle" size={24} color="#f97316" />
         <Text style={[styles.infoText, { color: colors.textSecondary }]}>
           All hotlines are for the Philippines. Tap to call directly.
         </Text>

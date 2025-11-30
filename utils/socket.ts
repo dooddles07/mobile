@@ -52,14 +52,17 @@ export const initializeSocket = async (): Promise<Socket> => {
     });
 
     socket.on('connect', () => {
+      console.log('✅ Socket connected successfully');
       // Join user's personal room for receiving SOS resolved notifications
       if (userId) {
         socket?.emit('join', userId);
+        console.log(`📡 Joined room: ${userId}`);
       }
 
       // Also join by username as fallback
       if (username) {
         socket?.emit('join', `user-${username}`);
+        console.log(`📡 Joined room: user-${username}`);
       }
     });
 
@@ -72,13 +75,16 @@ export const initializeSocket = async (): Promise<Socket> => {
     });
 
     socket.on('reconnect', async (attemptNumber) => {
+      console.log(`🔄 Socket reconnected after ${attemptNumber} attempts`);
       // Rejoin user rooms after reconnection
       if (userId) {
         socket?.emit('join', userId);
+        console.log(`📡 Rejoined room: ${userId}`);
       }
 
       if (username) {
         socket?.emit('join', `user-${username}`);
+        console.log(`📡 Rejoined room: user-${username}`);
       }
     });
 
@@ -110,10 +116,29 @@ export const disconnectSocket = () => {
  * Removes any previous listeners to prevent duplicates
  */
 export const onSOSResolved = (callback: (data: any) => void) => {
+  console.log('👂 Setting up sos-resolved listener');
   // Remove all existing listeners first to prevent duplicates
   socket?.off('sos-resolved');
   // Register the new listener
-  socket?.on('sos-resolved', callback);
+  socket?.on('sos-resolved', (data) => {
+    console.log('📥 Received sos-resolved event:', data);
+    callback(data);
+  });
+};
+
+/**
+ * Listen for SOS cancelled event
+ * Removes any previous listeners to prevent duplicates
+ */
+export const onSOSCancelled = (callback: (data: any) => void) => {
+  console.log('👂 Setting up sos-cancelled listener');
+  // Remove all existing listeners first to prevent duplicates
+  socket?.off('sos-cancelled');
+  // Register the new listener
+  socket?.on('sos-cancelled', (data) => {
+    console.log('📥 Received sos-cancelled event:', data);
+    callback(data);
+  });
 };
 
 /**
@@ -142,6 +167,7 @@ export default {
   getSocket,
   disconnectSocket,
   onSOSResolved,
+  onSOSCancelled,
   onNewMessage,
   removeListener,
   emitEvent,

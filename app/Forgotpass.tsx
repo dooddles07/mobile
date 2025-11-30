@@ -77,7 +77,7 @@ const ForgotPass = () => {
   };
 
   const gradientColors = theme === 'light'
-    ? ["#f0fdfa", "#ccfbf1", "#99f6e4"] as const
+    ? ["#fef2f2", "#fee2e2", "#fecaca"] as const
     : ["#0f172a", "#1e293b", "#334155"] as const;
 
   return (
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 16,
     paddingVertical: 4,
-    shadowColor: '#14b8a6',
+    shadowColor: '#f97316',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -213,13 +213,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#14b8a6',
+    backgroundColor: '#f97316',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    shadowColor: '#14b8a6',
+    shadowColor: '#f97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

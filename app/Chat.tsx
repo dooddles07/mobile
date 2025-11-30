@@ -13,13 +13,15 @@ import {
   Image,
   Alert,
   Linking,
+  Modal,
+  Dimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import * as ImagePicker from 'expo-image-picker';
-import { Audio } from 'expo-av';
+import { Audio, Video } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,13 +48,17 @@ interface MessageItemProps {
   message: Message;
   theme: string;
   colors: any;
+  onPlayAudio?: (messageId: string, mediaUrl: string) => void;
+  isPlayingAudio?: boolean;
+  onImagePress?: (url: string) => void;
+  onVideoPress?: (url: string) => void;
 }
 
 // ============================================
 // MESSAGE ITEM COMPONENT
 // ============================================
 
-const MessageItem: React.FC<MessageItemProps> = React.memo(({ message, theme, colors }) => {
+const MessageItem: React.FC<MessageItemProps> = React.memo(({ message, theme, colors, onPlayAudio, isPlayingAudio, onImagePress, onVideoPress }) => {
   const formatTime = (date: string) => {
     return new Date(date).toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -73,49 +79,63 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ message, theme, co
     <View
       style={[
         styles.messageContainer,
-        isUser ? styles.userMessage : { backgroundColor: colors.card, borderWidth: 1, borderColor: theme === 'dark' ? colors.border : '#e0e0e0' },
+        isUser ? { ...styles.userMessage, backgroundColor: colors.primary } : { backgroundColor: colors.card, borderWidth: 1, borderColor: theme === 'dark' ? colors.border : '#e0e0e0' },
       ]}
     >
       {/* Image Message */}
       {message.messageType === 'image' && message.mediaUrl && (
-        <Image
-          source={{ uri: message.mediaUrl }}
-          style={styles.messageImage}
-          resizeMode="cover"
-        />
+        <TouchableOpacity
+          onPress={() => onImagePress && onImagePress(message.mediaUrl)}
+          activeOpacity={0.9}
+        >
+          <Image
+            source={{ uri: message.mediaUrl }}
+            style={styles.messageImage}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
       )}
 
       {/* Video Message */}
-      {message.messageType === 'video' && (
-        <View style={styles.videoContainer}>
-          {message.thumbnailUrl ? (
-            <Image
-              source={{ uri: message.thumbnailUrl }}
-              style={styles.messageImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.messageImage, styles.videoPlaceholder]}>
-              <Ionicons name="videocam" size={48} color={colors.textSecondary} />
+      {message.messageType === 'video' && message.mediaUrl && (
+        <TouchableOpacity
+          onPress={() => onVideoPress && onVideoPress(message.mediaUrl)}
+          activeOpacity={0.9}
+        >
+          <View style={styles.videoContainer}>
+            {message.thumbnailUrl ? (
+              <Image
+                source={{ uri: message.thumbnailUrl }}
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.messageImage, styles.videoPlaceholder]}>
+                <Ionicons name="videocam" size={48} color={colors.textSecondary} />
+              </View>
+            )}
+            <View style={styles.videoOverlay}>
+              <Ionicons name="play-circle" size={48} color="#fff" />
             </View>
-          )}
-          <View style={styles.videoOverlay}>
-            <Ionicons name="play-circle" size={48} color="#fff" />
+            {message.mediaDuration && (
+              <View style={styles.durationBadge}>
+                <Text style={styles.durationText}>
+                  {formatDuration(message.mediaDuration)}
+                </Text>
+              </View>
+            )}
           </View>
-          {message.mediaDuration && (
-            <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>
-                {formatDuration(message.mediaDuration)}
-              </Text>
-            </View>
-          )}
-        </View>
+        </TouchableOpacity>
       )}
 
       {/* Audio Message */}
-      {message.messageType === 'audio' && (
-        <View style={styles.audioContainer}>
-          <Ionicons name="mic" size={24} color={isUser ? "#fff" : "#14b8a6"} />
+      {message.messageType === 'audio' && message.mediaUrl && (
+        <TouchableOpacity
+          style={styles.audioContainer}
+          onPress={() => onPlayAudio && onPlayAudio(message._id, message.mediaUrl)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="mic" size={24} color={isUser ? "#fff" : colors.primary} />
           <View style={styles.audioInfo}>
             <Text style={[{ fontSize: 14, fontWeight: '600', color: colors.text }, isUser && styles.userMessageText]}>
               Voice message
@@ -126,8 +146,12 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ message, theme, co
               </Text>
             )}
           </View>
-          <Ionicons name="play" size={20} color={isUser ? "#fff" : "#14b8a6"} />
-        </View>
+          <Ionicons
+            name={isPlayingAudio ? "pause" : "play"}
+            size={20}
+            color={isUser ? "#fff" : colors.primary}
+          />
+        </TouchableOpacity>
       )}
 
       {/* Text (caption for media or standalone text) */}
@@ -175,12 +199,16 @@ const Chat: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const [imageModal, setImageModal] = useState<{ visible: boolean; url: string }>({ visible: false, url: '' });
+  const [videoModal, setVideoModal] = useState<{ visible: boolean; url: string }>({ visible: false, url: '' });
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const pollingInterval = useRef<number | null>(null);
   const audioRecording = useRef<Audio.Recording | null>(null);
   const recordingInterval = useRef<number | null>(null);
+  const audioSound = useRef<Audio.Sound | null>(null);
 
   // ============================================
   // INITIALIZATION
@@ -219,6 +247,9 @@ const Chat: React.FC = () => {
       }
       if (recordingInterval.current) {
         clearInterval(recordingInterval.current);
+      }
+      if (audioSound.current) {
+        audioSound.current.unloadAsync();
       }
     };
   }, [conversationId]);
@@ -635,6 +666,67 @@ const Chat: React.FC = () => {
   };
 
   // ============================================
+  // AUDIO PLAYBACK
+  // ============================================
+
+  const handlePlayAudio = async (messageId: string, mediaUrl: string) => {
+    try {
+      // If already playing this audio, pause it
+      if (playingAudioId === messageId && audioSound.current) {
+        const status = await audioSound.current.getStatusAsync();
+        if (status.isLoaded) {
+          if (status.isPlaying) {
+            await audioSound.current.pauseAsync();
+          } else {
+            await audioSound.current.playAsync();
+          }
+        }
+        return;
+      }
+
+      // Stop and unload previous audio if any
+      if (audioSound.current) {
+        await audioSound.current.stopAsync();
+        await audioSound.current.unloadAsync();
+        audioSound.current = null;
+      }
+
+      // Set audio mode for playback
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+
+      // Load and play new audio
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: mediaUrl },
+        { shouldPlay: true }
+      );
+
+      audioSound.current = sound;
+      setPlayingAudioId(messageId);
+
+      // Set up completion callback
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingAudioId(null);
+          sound.unloadAsync();
+          audioSound.current = null;
+        }
+      });
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      Alert.alert('Error', 'Failed to play audio message. Please try again.');
+      setPlayingAudioId(null);
+      if (audioSound.current) {
+        audioSound.current.unloadAsync();
+        audioSound.current = null;
+      }
+    }
+  };
+
+  // ============================================
   // CALL FUNCTIONALITY
   // ============================================
 
@@ -686,13 +778,40 @@ const Chat: React.FC = () => {
   // HANDLERS
   // ============================================
 
-  const handleBackPress = useCallback(() => {
+  const handleBackPress = useCallback(async () => {
+    // Stop any playing audio before leaving
+    if (audioSound.current) {
+      try {
+        await audioSound.current.stopAsync();
+        await audioSound.current.unloadAsync();
+        audioSound.current = null;
+      } catch (error) {
+        console.error('Error stopping audio:', error);
+      }
+    }
+    setPlayingAudioId(null);
     router.back();
   }, [router]);
 
+  const handleImagePress = useCallback((url: string) => {
+    setImageModal({ visible: true, url });
+  }, []);
+
+  const handleVideoPress = useCallback((url: string) => {
+    setVideoModal({ visible: true, url });
+  }, []);
+
   const renderItem = useCallback(({ item }: { item: Message }) => (
-    <MessageItem message={item} theme={theme} colors={colors} />
-  ), [theme, colors]);
+    <MessageItem
+      message={item}
+      theme={theme}
+      colors={colors}
+      onPlayAudio={handlePlayAudio}
+      isPlayingAudio={playingAudioId === item._id}
+      onImagePress={handleImagePress}
+      onVideoPress={handleVideoPress}
+    />
+  ), [theme, colors, playingAudioId]);
 
   const keyExtractor = useCallback((item: Message) => item._id, []);
 
@@ -725,8 +844,8 @@ const Chat: React.FC = () => {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme === 'dark' ? colors.background : '#f0fdfa' }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, paddingTop: Math.max(insets.top + 12, 50) }]}>
@@ -810,7 +929,8 @@ const Chat: React.FC = () => {
                 backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
                 color: theme === 'dark' ? '#ffffff' : '#000000',
                 borderWidth: 1,
-                borderColor: theme === 'dark' ? '#374151' : '#e5e7eb'
+                borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+                textAlignVertical: 'center',
               }]}
               placeholder="Type your message..."
               placeholderTextColor={colors.placeholder}
@@ -818,14 +938,14 @@ const Chat: React.FC = () => {
               onChangeText={setInput}
               onSubmitEditing={handleInputSubmit}
               returnKeyType="send"
-              multiline
+              blurOnSubmit={false}
               maxLength={1000}
               editable={!sending}
             />
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                { backgroundColor: input.trim() && !sending ? '#14b8a6' : colors.border }
+                { backgroundColor: input.trim() && !sending ? colors.primary : colors.border }
               ]}
               onPress={() => sendMessage('text')}
               disabled={!input.trim() || sending}
@@ -844,6 +964,70 @@ const Chat: React.FC = () => {
           </View>
         </View>
       )}
+
+      {/* Image Modal */}
+      <Modal
+        visible={imageModal.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setImageModal({ visible: false, url: '' })}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalCloseArea}
+            onPress={() => setImageModal({ visible: false, url: '' })}
+            activeOpacity={1}
+          >
+            <View style={styles.modalContent}>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setImageModal({ visible: false, url: '' })}
+              >
+                <Ionicons name="close" size={30} color="#fff" />
+              </TouchableOpacity>
+              <Image
+                source={{ uri: imageModal.url }}
+                style={styles.modalImage}
+                resizeMode="contain"
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* Video Modal */}
+      <Modal
+        visible={videoModal.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setVideoModal({ visible: false, url: '' })}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalCloseArea}
+            onPress={() => setVideoModal({ visible: false, url: '' })}
+            activeOpacity={1}
+          >
+            <View style={styles.modalContent}>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setVideoModal({ visible: false, url: '' })}
+              >
+                <Ionicons name="close" size={30} color="#fff" />
+              </TouchableOpacity>
+              {videoModal.url && (
+                <Video
+                  source={{ uri: videoModal.url }}
+                  style={styles.modalVideo}
+                  useNativeControls
+                  resizeMode="contain"
+                  shouldPlay
+                />
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -932,7 +1116,6 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#14b8a6',
   },
   userMessageText: {
     color: '#fff',
@@ -1060,6 +1243,43 @@ const styles = StyleSheet.create({
   },
   stopButton: {
     padding: 10,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseArea: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: Dimensions.get('window').width * 0.95,
+    height: Dimensions.get('window').height * 0.8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 25,
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  modalVideo: {
+    width: '100%',
+    height: '100%',
   },
 });
 

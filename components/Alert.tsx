@@ -36,7 +36,7 @@ const Alert: React.FC<AlertProps> = ({ type, message }) => {
       case 'info':
       default:
         return {
-          backgroundColor: '#d1fae5',
+          backgroundColor: '#dbeafe',
           borderColor: DesignSystem.colors.semantic.info,
           icon: 'information-circle' as keyof typeof Ionicons.glyphMap,
           iconColor: DesignSystem.colors.semantic.info,

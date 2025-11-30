@@ -1,26 +1,27 @@
 // ResQYou App Design System - Colors
-// Modern color palette for consistent UI/UX
+// Emergency Tracking color palette for VAWC SOS system
 
 export const Colors = {
-  // Primary Colors
+  // Primary Colors - Emergency Red Theme
   primary: {
-    teal: '#14b8a6',      // Main brand color (teal/cyan)
-    tealDark: '#0d9488',  // Darker teal for hover states
-    tealLight: '#5eead4', // Light teal for highlights
+    red: '#dc2626',       // Main emergency red (primary brand color)
+    redDark: '#b91c1c',   // Darker red for hover/active states
+    redLight: '#fca5a5',  // Light red for highlights/backgrounds
   },
 
-  // Secondary Colors
+  // Secondary Colors - Action Orange
   secondary: {
-    purple: '#8b5cf6',    // Accent purple
-    blue: '#3b82f6',      // Info blue
+    orange: '#f97316',    // Action orange (buttons, CTAs)
+    orangeDark: '#ea580c', // Darker orange for hover states
+    orangeLight: '#fed7aa', // Light orange for highlights
   },
 
   // Alert Colors
   alert: {
-    red: '#ef4444',       // Danger/Emergency
-    orange: '#f97316',    // Warning
-    green: '#10b981',     // Success
-    yellow: '#fbbf24',    // Caution
+    emergency: '#dc2626', // Emergency/Critical alerts
+    warning: '#fbbf24',   // Warning/Caution
+    success: '#10b981',   // Success states
+    info: '#3b82f6',      // Informational
   },
 
   // Neutral Colors
@@ -39,11 +40,11 @@ export const Colors = {
     black: '#000000',
   },
 
-  // Gradients
+  // Gradients - Emergency theme
   gradients: {
-    background: ['#f0fdfa', '#ccfbf1', '#99f6e4'],
-    primary: ['#14b8a6', '#0d9488'],
-    danger: ['#ef4444', '#dc2626'],
+    background: ['#fef2f2', '#fee2e2', '#fecaca'], // Light red gradient
+    primary: ['#dc2626', '#b91c1c'],                // Emergency red gradient
+    action: ['#f97316', '#ea580c'],                 // Orange action gradient
   },
 
   // Semantic Colors

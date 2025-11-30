@@ -100,6 +100,7 @@ const ChatList: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [creatingChat, setCreatingChat] = useState(false);
 
   // ============================================
   // INITIALIZATION & DATA LOADING
@@ -256,40 +257,54 @@ const ChatList: React.FC = () => {
   }, [router]);
 
   const handleStartNewChat = useCallback(async () => {
+    // Prevent multiple clicks
+    if (creatingChat) {
+      console.log('⏸️ Already creating chat, ignoring duplicate click');
+      return;
+    }
+
+    setCreatingChat(true);
     console.log('🚀 Starting new chat...');
-    const conversation = await getOrCreateConversation();
 
-    if (!conversation) {
-      console.error('❌ Failed to create conversation - received null/undefined');
-      return;
-    }
+    try {
+      const conversation = await getOrCreateConversation();
 
-    console.log('✅ Conversation created/found:', {
-      _id: conversation._id,
-      adminName: conversation.adminName,
-      hasId: !!conversation._id
-    });
+      if (!conversation) {
+        console.error('❌ Failed to create conversation - received null/undefined');
+        Alert.alert('Error', 'Failed to create conversation. Please try again.');
+        return;
+      }
 
-    if (!conversation._id) {
-      console.error('❌ Conversation object missing _id property');
-      console.log('Full conversation object:', JSON.stringify(conversation, null, 2));
-      Alert.alert('Error', 'Failed to create conversation. Please try again.');
-      return;
-    }
+      console.log('✅ Conversation created/found:', {
+        _id: conversation._id,
+        adminName: conversation.adminName,
+        hasId: !!conversation._id
+      });
 
-    console.log('📍 Navigating to Chat screen with params:', {
-      conversationId: conversation._id,
-      adminName: conversation.adminName || 'ResqYOU Support'
-    });
+      if (!conversation._id) {
+        console.error('❌ Conversation object missing _id property');
+        console.log('Full conversation object:', JSON.stringify(conversation, null, 2));
+        Alert.alert('Error', 'Failed to create conversation. Please try again.');
+        return;
+      }
 
-    router.push({
-      pathname: "./Chat",
-      params: {
+      console.log('📍 Navigating to Chat screen with params:', {
         conversationId: conversation._id,
         adminName: conversation.adminName || 'ResqYOU Support'
-      }
-    });
-  }, [router]);
+      });
+
+      // Use replace instead of push to avoid stacking multiple screens
+      router.replace({
+        pathname: "./Chat",
+        params: {
+          conversationId: conversation._id,
+          adminName: conversation.adminName || 'ResqYOU Support'
+        }
+      });
+    } finally {
+      setCreatingChat(false);
+    }
+  }, [router, creatingChat]);
 
   const handleBackPress = useCallback(() => {
     router.push("/Home");
@@ -316,11 +331,26 @@ const ChatList: React.FC = () => {
       <Text style={[styles.emptyText, { color: colors.text }]}>No conversations yet</Text>
       <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>Start a conversation with ResqYOU support</Text>
       <TouchableOpacity
-        style={[styles.startChatButton, { backgroundColor: colors.primary }]}
+        style={[
+          styles.startChatButton,
+          { backgroundColor: colors.primary },
+          creatingChat && styles.startChatButtonDisabled
+        ]}
         onPress={handleStartNewChat}
+        disabled={creatingChat}
+        activeOpacity={0.7}
       >
-        <Ionicons name="add-circle" size={24} color="#fff" />
-        <Text style={styles.startChatButtonText}>Start Chat</Text>
+        {creatingChat ? (
+          <>
+            <ActivityIndicator size={24} color="#fff" />
+            <Text style={styles.startChatButtonText}>Creating...</Text>
+          </>
+        ) : (
+          <>
+            <Ionicons name="add-circle" size={24} color="#fff" />
+            <Text style={styles.startChatButtonText}>Start Chat</Text>
+          </>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -518,6 +548,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  startChatButtonDisabled: {
+    opacity: 0.6,
   },
   startChatButtonText: {
     color: '#fff',

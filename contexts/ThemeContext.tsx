@@ -33,19 +33,19 @@ export interface ThemeContextType {
   colors: ColorScheme;
 }
 
-// Light theme colors
+// Light theme colors - Emergency Tracking Theme
 const lightColors: ColorScheme = {
-  background: '#f0f9ff',
-  backgroundSecondary: '#e0f2fe',
+  background: '#fff5f5',
+  backgroundSecondary: '#fee2e2',
   card: 'rgba(255, 255, 255, 0.95)',
-  cardHighlight: 'rgba(20, 184, 166, 0.05)',
+  cardHighlight: 'rgba(220, 38, 38, 0.05)',
   text: '#1f2937',
   textSecondary: '#6b7280',
   textTertiary: '#9ca3af',
-  primary: '#14b8a6',
-  primaryDark: '#0d9488',
-  primaryLight: '#5eead4',
-  danger: '#ef4444',
+  primary: '#dc2626',
+  primaryDark: '#b91c1c',
+  primaryLight: '#fca5a5',
+  danger: '#dc2626',
   success: '#10b981',
   warning: '#f97316',
   border: '#d1d5db',
@@ -53,22 +53,22 @@ const lightColors: ColorScheme = {
   input: 'rgba(255, 255, 255, 0.95)',
   inputBorder: 'rgba(255, 255, 255, 0.95)',
   placeholder: '#9ca3af',
-  shadow: '#14b8a6',
+  shadow: '#dc2626',
 };
 
-// Dark theme colors
+// Dark theme colors - Emergency Tracking Theme
 const darkColors: ColorScheme = {
   background: '#0f172a',
   backgroundSecondary: '#1e293b',
   card: 'rgba(30, 41, 59, 0.95)',
-  cardHighlight: 'rgba(20, 184, 166, 0.15)',
+  cardHighlight: 'rgba(220, 38, 38, 0.15)',
   text: '#f1f5f9',
   textSecondary: '#cbd5e1',
   textTertiary: '#94a3b8',
-  primary: '#14b8a6',
-  primaryDark: '#0d9488',
-  primaryLight: '#5eead4',
-  danger: '#ef4444',
+  primary: '#dc2626',
+  primaryDark: '#b91c1c',
+  primaryLight: '#fca5a5',
+  danger: '#dc2626',
   success: '#10b981',
   warning: '#f97316',
   border: '#334155',

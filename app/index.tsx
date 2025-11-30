@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,6 +21,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import soundManager from '../utils/soundManager';
 import API_ENDPOINTS from '../config/api';
+import * as Location from "expo-location";
+import * as IntentLauncher from 'expo-intent-launcher';
 
 const API_URL = API_ENDPOINTS.AUTH;
 
@@ -41,6 +44,129 @@ const LoginScreen = () => {
       soundManager.unloadSounds();
     };
   }, []);
+
+  // Helper function to open device location settings
+  const openLocationSettings = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        await IntentLauncher.startActivityAsync(
+          IntentLauncher.ActivityAction.LOCATION_SOURCE_SETTINGS
+        );
+      } else {
+        await Linking.openURL('app-settings:');
+      }
+    } catch (error) {
+      await Linking.openSettings();
+    }
+  };
+
+  // Life360-style location permission - request only once, then smart detection
+  const requestLocationAccess = async (): Promise<boolean> => {
+    try {
+      // Check if we've requested permission before (first time vs returning user)
+      const hasRequestedBefore = await AsyncStorage.getItem('locationPermissionRequested');
+
+      if (!hasRequestedBefore) {
+        // FIRST TIME USER - Request all permissions
+        console.log('First time user - requesting location permissions');
+
+        // Step 1: Check if location services are enabled
+        const isLocationEnabled = await Location.hasServicesEnabledAsync();
+
+        if (!isLocationEnabled) {
+          // Show one-time alert for first-time users
+          await new Promise<void>((resolve) => {
+            Alert.alert(
+              "🚨 Enable Location for Safety",
+              "This emergency app needs location access to protect you.\n\nPlease enable location services to continue.",
+              [
+                {
+                  text: "Enable Now",
+                  onPress: async () => {
+                    await openLocationSettings();
+                    resolve();
+                  },
+                },
+                {
+                  text: "Later",
+                  style: "cancel",
+                  onPress: () => resolve(),
+                }
+              ]
+            );
+          });
+
+          // Wait a bit for user to enable
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Step 2: Request foreground permission (system dialog)
+        const foregroundPermission = await Location.requestForegroundPermissionsAsync();
+
+        if (foregroundPermission.status === 'granted') {
+          // Step 3: Request background permission (system dialog)
+          const backgroundPermission = await Location.requestBackgroundPermissionsAsync();
+
+          // Mark that we've requested permission (won't ask again)
+          await AsyncStorage.setItem('locationPermissionRequested', 'true');
+          console.log('Location permissions requested - marked as done');
+
+          if (backgroundPermission.status !== 'granted') {
+            // Gentle reminder for background permission
+            Alert.alert(
+              "⚠️ Enable 'Always Allow' for Best Protection",
+              "For maximum safety, select 'Allow all the time' in location settings.\n\nThis lets us track you during emergencies even when the app is closed.",
+              [
+                {
+                  text: "Enable Always",
+                  onPress: openLocationSettings,
+                },
+                {
+                  text: "Maybe Later",
+                  style: "cancel",
+                }
+              ]
+            );
+          }
+        } else {
+          // Permission denied - show one-time alert
+          Alert.alert(
+            "Location Permission Needed",
+            "This app requires location access for emergency SOS.\n\nYou can enable it later in Settings.",
+            [
+              {
+                text: "Open Settings",
+                onPress: openLocationSettings,
+              },
+              {
+                text: "OK",
+                style: "cancel",
+              }
+            ]
+          );
+        }
+
+        return true;
+      } else {
+        // RETURNING USER - Just check status, don't request again
+        console.log('Returning user - checking location status silently');
+
+        const isLocationEnabled = await Location.hasServicesEnabledAsync();
+        const { status } = await Location.getForegroundPermissionsAsync();
+
+        if (!isLocationEnabled || status !== 'granted') {
+          // Show gentle, non-blocking reminder
+          // The Home screen banner will also show this
+          console.log('Location is off or permission not granted - banner will show on Home');
+        }
+
+        return true;
+      }
+    } catch (error) {
+      console.error('Location access error:', error);
+      return false;
+    }
+  };
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -90,7 +216,12 @@ const LoginScreen = () => {
         await soundManager.playLoginSuccess();
 
         Alert.alert("Success", "Login successful!");
-        router.push("/Home");
+
+        // Request location permissions immediately after login
+        // This is critical for emergency SOS functionality
+        await requestLocationAccess();
+
+        router.replace("/Home");
       } else {
         Alert.alert("Login Failed", response.message || "Invalid credentials.");
       }
@@ -102,7 +233,7 @@ const LoginScreen = () => {
   };
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
-    ? ["#f0fdfa", "#ccfbf1", "#99f6e4"]
+    ? ["#fef2f2", "#fee2e2", "#fecaca"]
     : ["#0f172a", "#1e293b", "#334155"];
 
   return (
@@ -172,11 +303,11 @@ const LoginScreen = () => {
               onPress={() => router.push("/Forgotpass")}
               disabled={isLoading}
             >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <Text style={[styles.forgotText, { color: colors.warning }]}>Forgot Password?</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+              style={[styles.button, { backgroundColor: colors.warning }, isLoading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}
@@ -282,7 +413,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 4,
-    shadowColor: "#14b8a6",
+    shadowColor: "#f97316",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -300,20 +431,20 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   forgotText: {
-    color: "#14b8a6",
+    color: "#f97316",
     fontSize: 14,
     fontWeight: "600",
     textAlign: "right",
     marginBottom: 24,
   },
   button: {
-    backgroundColor: "#14b8a6",
+    backgroundColor: "#f97316",
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    shadowColor: "#14b8a6",
+    shadowColor: "#f97316",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

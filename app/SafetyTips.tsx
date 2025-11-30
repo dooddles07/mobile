@@ -29,7 +29,7 @@ const SafetyTips = () => {
     {
       category: 'Personal Safety',
       icon: 'shield-checkmark',
-      color: '#14b8a6',
+      color: '#dc2626',
       tips: [
         'Always trust your instincts. If something feels wrong, remove yourself from the situation.',
         'Share your location with trusted friends or family members when going out.',
@@ -151,7 +151,7 @@ const SafetyTips = () => {
   };
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
-    ? ['#f0fdfa', '#ccfbf1', '#99f6e4']
+    ? ['#fef2f2', '#fee2e2', '#fecaca']
     : ['#0f172a', '#1e293b', '#334155'];
 
   return (

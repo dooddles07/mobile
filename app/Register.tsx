@@ -123,7 +123,7 @@ const Register = () => {
 
   const gradientColors = theme === 'dark'
     ? ["#0f172a", "#1e293b", "#334155"]
-    : ["#f0fdfa", "#ccfbf1", "#99f6e4"];
+    : ["#fef2f2", "#fee2e2", "#fecaca"];
 
   return (
     <LinearGradient
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 4,
     borderWidth: 1,
-    shadowColor: "#14b8a6",
+    shadowColor: "#f97316",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   passwordRequirements: {
-    backgroundColor: 'rgba(20, 184, 166, 0.05)',
+    backgroundColor: 'rgba(249, 115, 22, 0.05)',
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
@@ -440,14 +440,14 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   button: {
-    backgroundColor: "#14b8a6",
+    backgroundColor: "#f97316",
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     marginTop: 8,
-    shadowColor: "#14b8a6",
+    shadowColor: "#f97316",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,

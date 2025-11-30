@@ -2,24 +2,24 @@
 // Following 60:30:10 color rule and consistent typography
 
 /**
- * COLOR THEORY FOR VAWC SOS TRACKING
+ * COLOR THEORY FOR VAWC SOS TRACKING - EMERGENCY THEME
  *
- * Primary (60%) - Teal: Trust, safety, calmness, healing
+ * Primary (60%) - Emergency Red: Urgency, critical alerts, immediate action
  * Secondary (30%) - Light neutrals: Clean, accessible, professional
- * Accent (10%) - Strategic colors: Emergency (red), warnings (yellow), success (green)
+ * Accent (10%) - Strategic colors: Action orange (buttons), success (green), warnings (yellow)
  */
 
 export const DesignSystem = {
   // ============================================
-  // COLORS - 60:30:10 RULE
+  // COLORS - 60:30:10 RULE (EMERGENCY THEME)
   // ============================================
   colors: {
-    // PRIMARY (60%) - Dominant color for main UI elements
+    // PRIMARY (60%) - Dominant emergency red for critical UI
     primary: {
-      main: '#14b8a6',        // Teal - Trust & Safety
-      dark: '#0d9488',        // Darker teal for hover/active states
-      light: '#5eead4',       // Light teal for highlights
-      background: '#f0fdfa',  // Very light teal for backgrounds
+      main: '#dc2626',        // Emergency Red - Urgency & Critical Action
+      dark: '#b91c1c',        // Darker red for hover/active states
+      light: '#fca5a5',       // Light red for highlights
+      background: '#fef2f2',  // Very light red for backgrounds
     },
 
     // SECONDARY (30%) - Supporting colors for surfaces and text
@@ -38,7 +38,8 @@ export const DesignSystem = {
 
     // ACCENT (10%) - Strategic use for important actions
     accent: {
-      emergency: '#ef4444',   // Red - Emergency/Danger (SOS button)
+      action: '#f97316',      // Orange - Action buttons/CTAs
+      actionDark: '#ea580c',  // Darker orange for hover
       warning: '#fbbf24',     // Yellow - Warnings/Caution
       success: '#10b981',     // Green - Success states
       info: '#3b82f6',        // Blue - Informational
@@ -46,10 +47,10 @@ export const DesignSystem = {
 
     // SEMANTIC COLORS - Consistent meaning across app
     semantic: {
-      error: '#ef4444',
-      success: '#10b981',
-      warning: '#fbbf24',
-      info: '#14b8a6',
+      error: '#dc2626',       // Emergency red for errors
+      success: '#10b981',     // Green for success
+      warning: '#fbbf24',     // Yellow for warnings
+      info: '#3b82f6',        // Blue for info
     },
 
     // TEXT COLORS - High contrast for accessibility
@@ -66,7 +67,7 @@ export const DesignSystem = {
       primary: '#ffffff',
       secondary: '#f9fafb',
       tertiary: '#f3f4f6',
-      teal: '#f0fdfa',        // Teal-tinted background
+      emergency: '#fef2f2',   // Light red-tinted background
       dark: '#0f172a',        // Dark mode primary
       darkSecondary: '#1e293b', // Dark mode secondary
     },
@@ -76,7 +77,7 @@ export const DesignSystem = {
       light: '#e5e7eb',
       medium: '#d1d5db',
       dark: '#9ca3af',
-      focus: '#14b8a6',       // Focus state for inputs
+      focus: '#dc2626',       // Emergency red for focus states
     },
 
     // OVERLAY COLORS
@@ -214,9 +215,9 @@ export const DesignSystem = {
   // BUTTON STYLES - Consistent interactive elements
   // ============================================
   buttons: {
-    // PRIMARY BUTTON - Main actions (SOS, Submit)
+    // PRIMARY BUTTON - Main action buttons (Orange)
     primary: {
-      backgroundColor: '#14b8a6',
+      backgroundColor: '#f97316',
       paddingVertical: 16,
       paddingHorizontal: 24,
       borderRadius: 16,
@@ -227,20 +228,20 @@ export const DesignSystem = {
 
     // SECONDARY BUTTON - Alternative actions
     secondary: {
-      backgroundColor: '#f0fdfa',
+      backgroundColor: '#fff7ed',
       paddingVertical: 16,
       paddingHorizontal: 24,
       borderRadius: 16,
       borderWidth: 1.5,
-      borderColor: '#14b8a6',
+      borderColor: '#f97316',
       fontSize: 17,
       fontWeight: '700',
-      color: '#14b8a6',
+      color: '#f97316',
     },
 
-    // DANGER BUTTON - Destructive actions (SOS, Delete)
+    // DANGER BUTTON - Emergency/Critical actions (SOS, Delete)
     danger: {
-      backgroundColor: '#ef4444',
+      backgroundColor: '#dc2626',
       paddingVertical: 16,
       paddingHorizontal: 24,
       borderRadius: 16,
@@ -257,7 +258,7 @@ export const DesignSystem = {
       borderRadius: 12,
       fontSize: 15,
       fontWeight: '600',
-      color: '#14b8a6',
+      color: '#f97316',
     },
 
     // ICON BUTTON - Icon-only buttons
@@ -286,11 +287,11 @@ export const DesignSystem = {
       color: '#1f2937',
     },
     focused: {
-      borderColor: '#14b8a6',
-      backgroundColor: '#f0fdfa',
+      borderColor: '#f97316',
+      backgroundColor: '#fff7ed',
     },
     error: {
-      borderColor: '#ef4444',
+      borderColor: '#dc2626',
       backgroundColor: '#fef2f2',
     },
   },
