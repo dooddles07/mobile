@@ -1,11 +1,18 @@
 /**
  * API Configuration
  * Central configuration for API endpoints
- * Defaults to production URL, can be overridden with EXPO_PUBLIC_API_URL environment variable
+ * 🔒 SECURITY: API URL must be set in .env file
+ * Set EXPO_PUBLIC_API_URL environment variable
  */
 
-// Production backend URL - change to local IP for development (e.g., 'http://192.168.100.6:10000')
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://resqyou-backend.onrender.com';
+// 🔒 SECURITY: Require environment variable to be set
+if (!process.env.EXPO_PUBLIC_API_URL) {
+  console.error('❌ EXPO_PUBLIC_API_URL environment variable is required!');
+  console.error('   Please add EXPO_PUBLIC_API_URL to your .env file');
+  console.error('   Example: EXPO_PUBLIC_API_URL=http://your-backend-url:10000');
+}
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
 export const API_ENDPOINTS = {
   BASE_URL: BASE_URL,

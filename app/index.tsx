@@ -188,7 +188,9 @@ const LoginScreen = () => {
       const data = response.data || response;
 
       if (res.ok && data?.token) {
+        // 🔒 Store authentication token (used by Socket.IO and API calls)
         await AsyncStorage.setItem("token", data.token);
+        await AsyncStorage.setItem("userToken", data.token); // For Socket.IO authentication
         await AsyncStorage.setItem("username", username);
         await AsyncStorage.setItem("fullname", data.user?.fullname || username);
 

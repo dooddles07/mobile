@@ -59,8 +59,15 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
           longitude: Number(longitude),
         };
 
+        // Get auth token for API request
+        const token = await AsyncStorage.getItem("token");
+
         // Send location update to backend
-        const bgResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, backgroundPayload);
+        const bgResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, backgroundPayload, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         console.log(`   ✅ Background location update sent successfully\n`);
       } catch (error) {
         console.error('   ❌ Background location update failed:', error);
@@ -263,8 +270,15 @@ const Home = () => {
     console.log('   API Endpoint:', `${API_ENDPOINTS.SOS}/active/${username}`);
 
     try {
+      // Get auth token for API request
+      const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
-        `${API_ENDPOINTS.SOS}/active/${username}`
+        `${API_ENDPOINTS.SOS}/active/${username}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
       );
 
       console.log('✅ Active SOS check response:', JSON.stringify(response.data, null, 2));
@@ -315,8 +329,15 @@ const Home = () => {
 
       console.log('🔄 Status check polling (SOS is active)...');
       try {
+        // Get auth token for API request
+        const token = await AsyncStorage.getItem("token");
         const response = await axios.get(
-          `${API_ENDPOINTS.SOS}/active/${username}`
+          `${API_ENDPOINTS.SOS}/active/${username}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
         );
 
         console.log('   Server response:', response.data);
@@ -488,7 +509,13 @@ const Home = () => {
       console.log(`   🎯 Accuracy: ${Math.round(locationAccuracy)}m`);
       console.log(`   👤 Username: ${username}`);
 
-      const updateResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, updatePayload);
+      // Get auth token for API request
+      const token = await AsyncStorage.getItem("token");
+      const updateResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, updatePayload, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
 
       console.log(`   ✅ Location update sent successfully`);
       console.log(`   ⏰ Next update in 60 seconds\n`);
@@ -585,9 +612,16 @@ const Home = () => {
                 // Stop SOS sound
                 await soundManager.stopSOSSound();
 
+                // Get auth token for API request
+                const token = await AsyncStorage.getItem("token");
+
                 // Cancel SOS in backend
                 await axios.post(`${API_ENDPOINTS.SOS}/cancel`, {
                   username,
+                }, {
+                  headers: {
+                    Authorization: `Bearer ${token}`
+                  }
                 });
 
                 stopPulseAnimation();
@@ -723,10 +757,18 @@ const Home = () => {
       console.log(`   🎯 Accuracy: ${Math.round(locationAccuracy)}m`);
       console.log(`   👤 Username: ${username}`);
 
+      // Get auth token for API request
+      const token = await AsyncStorage.getItem("token");
+
       // Step 4: Send initial SOS to backend
       const response = await axios.post(
         `${API_ENDPOINTS.SOS}/send`,
-        sosPayload
+        sosPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
       );
 
       console.log('   ✅ Initial SOS alert sent successfully!');

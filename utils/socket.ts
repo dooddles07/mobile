@@ -41,9 +41,20 @@ export const initializeSocket = async (): Promise<Socket> => {
     // Get username
     username = await AsyncStorage.getItem('username');
 
+    // 🔒 Get authentication token for secure connection
+    const token = await AsyncStorage.getItem('userToken');
+
+    if (!token) {
+      console.warn('⚠️ No auth token found - socket connection may fail');
+      throw new Error('Authentication token required for socket connection');
+    }
+
     // Socket will connect but won't join user room if no userId or username
 
     socket = io(API_ENDPOINTS.BASE_URL, {
+      auth: {
+        token: token // 🔒 Pass JWT token for authentication
+      },
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
