@@ -4,7 +4,7 @@
     "slug": "resqyou-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/rqapk.png",
+    "icon": "./assets/images/apkicon.png",
     "scheme": "resqyou",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,10 +13,6 @@
       "bundleIdentifier": "com.resqyou.mobile"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/rqapk.png",
-        "backgroundColor": "#E6F4FE"
-      },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.resqyou.mobile",
@@ -40,7 +36,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/bg1.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",

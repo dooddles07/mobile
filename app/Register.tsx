@@ -35,6 +35,16 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // Check if password meets all requirements
+  const isPasswordValid = () => {
+    return (
+      password.length >= 6 &&
+      /(?=.*[a-z])/.test(password) &&
+      /(?=.*[A-Z])/.test(password) &&
+      /(?=.*\d)/.test(password)
+    );
+  };
+
   const handleRegister = async () => {
     if (!fullname || !email || !username || !password || !confirmPassword || !contactNumber) {
       Alert.alert("Error", "Please fill in all fields.");
@@ -232,7 +242,7 @@ const Register = () => {
                 />
               </TouchableOpacity>
             </View>
-            {password.length > 0 && (
+            {password.length > 0 && !isPasswordValid() && (
               <View style={styles.passwordRequirements}>
                 <Text style={[styles.requirementText, { color: colors.textSecondary }]}>Password must contain:</Text>
                 <View style={styles.requirementRow}>
