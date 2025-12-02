@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl, Alert } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -53,11 +54,16 @@ const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ conversation, on
     <TouchableOpacity
       style={[
         styles.chatCard,
-        { backgroundColor: colors.card },
+        {
+          backgroundColor: '#FFF9E5',
+          borderWidth: 2,
+          borderColor: '#FFE4A3'
+        },
         conversation.unreadCountUser > 0 && {
-          backgroundColor: colors.cardHighlight,
+          backgroundColor: '#FFE8E8',
           borderLeftWidth: 4,
-          borderLeftColor: colors.primary
+          borderLeftColor: '#E74C3C',
+          borderColor: '#FFB8B8'
         }
       ]}
       onPress={() => onPress(conversation)}
@@ -65,22 +71,38 @@ const ChatListItem: React.FC<ChatListItemProps> = React.memo(({ conversation, on
     >
       <View style={styles.chatHeader}>
         <View style={styles.chatNameContainer}>
-          <Text style={[styles.chatName, { color: colors.text }]}>
+          <Text style={[styles.chatName, {
+            color: conversation.unreadCountUser > 0 ? '#8B1A1A' : '#8B6914',
+            fontWeight: '700'
+          }]}>
             {conversation.adminName || 'ResqYOU Support'}
           </Text>
           {conversation.unreadCountUser > 0 && (
-            <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+            <View style={[styles.unreadBadge, {
+              backgroundColor: '#E74C3C',
+              shadowColor: '#E74C3C',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 3
+            }]}>
               <Text style={styles.unreadBadgeText}>{conversation.unreadCountUser}</Text>
             </View>
           )}
         </View>
-        <Text style={[styles.timestamp, { color: colors.textTertiary }]}>{formatTime(conversation.lastMessageTime)}</Text>
+        <Text style={[styles.timestamp, {
+          color: conversation.unreadCountUser > 0 ? '#A83232' : '#A0753D',
+          fontWeight: '600'
+        }]}>{formatTime(conversation.lastMessageTime)}</Text>
       </View>
-      <Text style={[styles.lastMessage, { color: colors.textSecondary }]} numberOfLines={1}>
+      <Text style={[styles.lastMessage, {
+        color: conversation.unreadCountUser > 0 ? '#8B1A1A' : '#8B6914',
+        fontWeight: '500'
+      }]} numberOfLines={1}>
         {conversation.lastMessage || 'No messages yet'}
       </Text>
       {conversation.status === 'archived' && (
-        <Text style={styles.archivedText}>Archived</Text>
+        <Text style={[styles.archivedText, { color: '#FFB84D', fontWeight: '600' }]}>Archived</Text>
       )}
     </TouchableOpacity>
   );
@@ -107,17 +129,14 @@ const ChatList: React.FC = () => {
   // ============================================
 
   useEffect(() => {
-    console.log('ChatList mounted, fetching conversations...');
     fetchConversations();
 
     // Poll for new messages every 15 seconds (reduced frequency)
     const interval = setInterval(() => {
-      console.log('Polling for new conversations...');
       fetchConversations();
     }, 15000);
 
     return () => {
-      console.log('ChatList unmounted, clearing interval');
       clearInterval(interval);
     };
   }, []);
@@ -128,32 +147,23 @@ const ChatList: React.FC = () => {
 
   const fetchConversations = async () => {
     try {
-      console.log('Fetching conversations from:', `${API_BASE}/api/messages/conversations/user`);
       const token = await AsyncStorage.getItem('token');
 
       if (!token) {
-        console.log('No token found, redirecting to login');
         router.replace('/');
         return;
       }
-
-      console.log('Token found, making API request...');
-      const startTime = Date.now();
 
       const response = await axios.get(
         `${API_BASE}/api/messages/conversations/user`,
         {
           headers: { 'Authorization': `Bearer ${token}` },
-          timeout: 10000, // 10 second timeout
+          timeout: 10000,
         }
       );
 
-      const endTime = Date.now();
-      console.log(`API request completed in ${endTime - startTime}ms`);
-
       // Handle both old format (direct array) and new format (wrapped in data property)
       const conversationsData = Array.isArray(response.data) ? response.data : response.data.data;
-      console.log(`Found ${conversationsData?.length || 0} conversations`);
 
       setConversations(conversationsData || []);
       setLoading(false);
@@ -163,35 +173,21 @@ const ChatList: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
 
-      if (error.code === 'ECONNABORTED') {
-        console.log('❌ Request timed out - server might be slow or not responding');
-      } else if (error.response?.status === 401) {
-        console.log('❌ Authentication failed - token expired');
+      if (error.response?.status === 401) {
         await AsyncStorage.multiRemove(['token', 'username']);
         router.replace('/');
-      } else if (error.message === 'Network Error') {
-        console.log('❌ Network error - Cannot reach server at:', API_BASE);
-        console.log('Make sure:');
-        console.log('1. Backend server is running on port 10000');
-        console.log('2. API_BASE IP matches your computer IP');
-        console.log('3. Mobile device is on same network as server');
       }
     }
   };
 
   const getOrCreateConversation = async () => {
     try {
-      console.log('📝 Creating new conversation...');
       const token = await AsyncStorage.getItem('token');
 
       if (!token) {
-        console.log('❌ No token found when creating conversation');
         router.replace('/');
         return null;
       }
-
-      console.log('✅ Token found, making POST request to:', `${API_BASE}/api/messages/conversation`);
-      const startTime = Date.now();
 
       // The backend will get userId from the token, so we don't need to pass it explicitly
       const response = await axios.post(
@@ -199,43 +195,17 @@ const ChatList: React.FC = () => {
         {},
         {
           headers: { 'Authorization': `Bearer ${token}` },
-          timeout: 10000, // 10 second timeout
+          timeout: 10000,
         }
       );
 
-      const endTime = Date.now();
-      console.log(`✅ Conversation created successfully in ${endTime - startTime}ms`);
-      console.log('Conversation data:', response.data);
-
       return response.data;
     } catch (error: any) {
-      console.error('❌ Error creating conversation:');
-      console.error('Error message:', error.message);
+      console.error('Error creating conversation:', error.message);
 
-      if (error.response) {
-        // Server responded with error
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        console.error('Response headers:', error.response.headers);
-
-        // Show user-friendly error message
-        if (error.response.status === 401) {
-          console.log('Authentication failed - redirecting to login');
-          await AsyncStorage.multiRemove(['token', 'username']);
-          router.replace('/');
-        } else if (error.response.status === 400) {
-          console.log('Bad request:', error.response.data.message);
-        } else if (error.response.status === 500) {
-          console.log('Server error:', error.response.data.message);
-        }
-      } else if (error.request) {
-        // Request was made but no response
-        console.error('No response received from server');
-        console.error('Request:', error.request);
-        console.log('❌ Network error - server might be down or unreachable');
-      } else {
-        // Error in request setup
-        console.error('Error setting up request:', error.message);
+      if (error.response?.status === 401) {
+        await AsyncStorage.multiRemove(['token', 'username']);
+        router.replace('/');
       }
 
       return null;
@@ -259,39 +229,24 @@ const ChatList: React.FC = () => {
   const handleStartNewChat = useCallback(async () => {
     // Prevent multiple clicks
     if (creatingChat) {
-      console.log('⏸️ Already creating chat, ignoring duplicate click');
       return;
     }
 
     setCreatingChat(true);
-    console.log('🚀 Starting new chat...');
 
     try {
       const conversation = await getOrCreateConversation();
 
       if (!conversation) {
-        console.error('❌ Failed to create conversation - received null/undefined');
         Alert.alert('Error', 'Failed to create conversation. Please try again.');
         return;
       }
-
-      console.log('✅ Conversation created/found:', {
-        _id: conversation._id,
-        adminName: conversation.adminName,
-        hasId: !!conversation._id
-      });
 
       if (!conversation._id) {
-        console.error('❌ Conversation object missing _id property');
-        console.log('Full conversation object:', JSON.stringify(conversation, null, 2));
+        console.error('Conversation object missing _id property');
         Alert.alert('Error', 'Failed to create conversation. Please try again.');
         return;
       }
-
-      console.log('📍 Navigating to Chat screen with params:', {
-        conversationId: conversation._id,
-        adminName: conversation.adminName || 'ResqYOU Support'
-      });
 
       // Use replace instead of push to avoid stacking multiple screens
       router.replace({
@@ -327,13 +282,29 @@ const ChatList: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="chatbubbles-outline" size={64} color={colors.borderLight} />
-      <Text style={[styles.emptyText, { color: colors.text }]}>No conversations yet</Text>
-      <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>Start a conversation with ResqYOU support</Text>
+      <View style={{
+        backgroundColor: '#FFF5E6',
+        padding: 20,
+        borderRadius: 50,
+        marginBottom: 20,
+        borderWidth: 3,
+        borderColor: '#FFD4A3'
+      }}>
+        <Ionicons name="chatbubbles-outline" size={64} color="#FF8C00" />
+      </View>
+      <Text style={[styles.emptyText, { color: '#5D4E37', fontWeight: '700' }]}>No conversations yet</Text>
+      <Text style={[styles.emptySubtext, { color: '#8B6914', fontWeight: '500' }]}>Start a conversation with ResqYOU support</Text>
       <TouchableOpacity
         style={[
           styles.startChatButton,
-          { backgroundColor: colors.primary },
+          {
+            backgroundColor: '#FFB84D',
+            shadowColor: '#FF8C00',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 4
+          },
           creatingChat && styles.startChatButtonDisabled
         ]}
         onPress={handleStartNewChat}
@@ -343,12 +314,12 @@ const ChatList: React.FC = () => {
         {creatingChat ? (
           <>
             <ActivityIndicator size={24} color="#fff" />
-            <Text style={styles.startChatButtonText}>Creating...</Text>
+            <Text style={[styles.startChatButtonText, { fontWeight: '700' }]}>Creating...</Text>
           </>
         ) : (
           <>
             <Ionicons name="add-circle" size={24} color="#fff" />
-            <Text style={styles.startChatButtonText}>Start Chat</Text>
+            <Text style={[styles.startChatButtonText, { fontWeight: '700' }]}>Start Chat</Text>
           </>
         )}
       </TouchableOpacity>
@@ -359,31 +330,61 @@ const ChatList: React.FC = () => {
   // RENDER
   // ============================================
 
+  const gradientColors: readonly [string, string, string] = theme === 'light'
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
+
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading conversations...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: '#fcc585' }]}>
+        <LinearGradient
+          colors={gradientColors}
+          style={styles.loadingContainer}
+        >
+          <View style={{
+            backgroundColor: '#FFF9E5',
+            padding: 30,
+            borderRadius: 20,
+            borderWidth: 3,
+            borderColor: '#FFD4A3',
+            alignItems: 'center'
+          }}>
+            <ActivityIndicator size="large" color="#FF8C00" />
+            <Text style={[styles.loadingText, { color: '#5D4E37', fontWeight: '600' }]}>Loading conversations...</Text>
+          </View>
+        </LinearGradient>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: Math.max(insets.top + 10, 50) }]}>
+    <View style={[styles.container, { backgroundColor: '#fcc585' }]}>
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.container}
+      >
+        {/* Header */}
+      <View style={[styles.header, {
+        backgroundColor: '#FFF5E6',
+        paddingTop: Math.max(insets.top + 10, 50),
+        borderBottomWidth: 2,
+        borderBottomColor: '#FFD4A3'
+      }]}>
         <TouchableOpacity
           onPress={handleBackPress}
-          style={styles.headerBack}
+          style={[styles.headerBack, {
+            backgroundColor: '#FFF9E5',
+            borderRadius: 10
+          }]}
           accessible={true}
           accessibilityLabel="Go back to home"
           accessibilityRole="button"
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color="#8B5A00" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Messages</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: '#5D4E37', fontWeight: '700' }]}>Messages</Text>
+          <Text style={[styles.headerSubtitle, { color: '#8B6914', fontWeight: '600' }]}>
             {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
           </Text>
         </View>
@@ -407,6 +408,7 @@ const ChatList: React.FC = () => {
           />
         }
       />
+      </LinearGradient>
     </View>
   );
 };

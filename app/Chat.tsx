@@ -16,6 +16,7 @@ import {
   Modal,
   Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -79,7 +80,24 @@ const MessageItem: React.FC<MessageItemProps> = React.memo(({ message, theme, co
     <View
       style={[
         styles.messageContainer,
-        isUser ? { ...styles.userMessage, backgroundColor: colors.primary } : { backgroundColor: colors.card, borderWidth: 1, borderColor: theme === 'dark' ? colors.border : '#e0e0e0' },
+        isUser ? {
+          ...styles.userMessage,
+          backgroundColor: '#FFB84D',
+          shadowColor: '#FF8C00',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 3,
+          elevation: 2
+        } : {
+          backgroundColor: '#FFFFFF',
+          borderWidth: 2,
+          borderColor: '#FFE4A3',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+          elevation: 1
+        },
       ]}
     >
       {/* Image Message */}
@@ -822,9 +840,16 @@ const Chat: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="chatbubble-ellipses-outline" size={64} color={colors.textTertiary} />
-      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No messages yet</Text>
-      <Text style={[styles.emptySubtext, { color: colors.textTertiary }]}>Start the conversation by sending a message</Text>
+      <View style={{
+        backgroundColor: '#FFF0E5',
+        padding: 20,
+        borderRadius: 50,
+        marginBottom: 20
+      }}>
+        <Ionicons name="chatbubble-ellipses-outline" size={64} color="#FFB84D" />
+      </View>
+      <Text style={[styles.emptyText, { color: '#5D4E37', fontWeight: '700' }]}>No messages yet</Text>
+      <Text style={[styles.emptySubtext, { color: '#8B6914', fontWeight: '500' }]}>Start the conversation by sending a message</Text>
     </View>
   );
 
@@ -832,46 +857,85 @@ const Chat: React.FC = () => {
   // RENDER
   // ============================================
 
+  const gradientColors: readonly [string, string, string] = theme === 'light'
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
+
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading messages...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: '#fcc585' }]}>
+        <LinearGradient
+          colors={gradientColors}
+          style={styles.loadingContainer}
+        >
+          <View style={{
+            backgroundColor: '#E8F5E9',
+            padding: 30,
+            borderRadius: 20,
+            borderWidth: 3,
+            borderColor: '#A5D6A7',
+            alignItems: 'center'
+          }}>
+            <ActivityIndicator size="large" color="#2c5a2eff" />
+            <Text style={[styles.loadingText, { color: '#85be88ff', fontWeight: '600' }]}>Loading messages...</Text>
+          </View>
+        </LinearGradient>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme === 'dark' ? colors.background : '#f0fdfa' }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.card, paddingTop: Math.max(insets.top + 12, 50) }]}>
+    <View style={[styles.container, { backgroundColor: '#fcc585' }]}>
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.container}
+      >
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          {/* Header */}
+      <View style={[styles.header, {
+        backgroundColor: '#FFF0E5',
+        paddingTop: Math.max(insets.top + 12, 50),
+        borderBottomWidth: 2,
+        borderBottomColor: '#FFD4A3'
+      }]}>
         <TouchableOpacity
           onPress={handleBackPress}
-          style={styles.headerBack}
+          style={[styles.headerBack, {
+            backgroundColor: '#FFF0E5',
+            borderRadius: 10
+          }]}
           accessible={true}
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color="#8B5A00" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{adminName || 'ResqYOU Respondents'}</Text>
-          <Text style={[styles.headerStatus, { color: colors.textSecondary }]}>
+          <Text style={[styles.headerTitle, { color: '#5D4E37', fontWeight: '700' }]}>{adminName || 'ResqYOU Respondents'}</Text>
+          <Text style={[styles.headerStatus, { color: '#8B6914', fontWeight: '600' }]}>
             {messages.length > 0 ? 'Active' : 'Start conversation'}
           </Text>
         </View>
         <TouchableOpacity
           onPress={handleCall}
-          style={styles.headerRight}
+          style={[styles.headerRight, {
+            backgroundColor: '#FFF0E5',
+            borderRadius: 50,
+            shadowColor: '#FFF0E5',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
+            elevation: 3
+          }]}
           accessible={true}
           accessibilityLabel="Call emergency or respondent"
           accessibilityRole="button"
         >
-          <Ionicons name="call" size={24} color={colors.primary} />
+          <Ionicons name="call" size={24} color="#8B5A00" />
         </TouchableOpacity>
       </View>
 
@@ -891,34 +955,92 @@ const Chat: React.FC = () => {
       {/* Input Container */}
       {recording ? (
         /* Recording UI */
-        <View style={[styles.recordingContainer, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
-          <TouchableOpacity onPress={cancelRecording} style={styles.cancelButton}>
-            <Ionicons name="trash" size={24} color="#ff4444" />
+        <View style={[styles.recordingContainer, {
+          backgroundColor: '#FFE8E8',
+          borderTopWidth: 2,
+          borderTopColor: '#FFB8B8',
+          paddingBottom: Math.max(insets.bottom + 8, 16)
+        }]}>
+          <TouchableOpacity
+            onPress={cancelRecording}
+            style={[styles.cancelButton, {
+              backgroundColor: '#FFEBEE',
+              borderRadius: 50
+            }]}
+          >
+            <Ionicons name="trash" size={24} color="#E74C3C" />
           </TouchableOpacity>
           <View style={styles.recordingIndicator}>
-            <View style={styles.recordingDot} />
-            <Text style={[styles.recordingText, { color: colors.text }]}>{formatRecordingTime(recordingTime)}</Text>
+            <View style={[styles.recordingDot, {
+              backgroundColor: '#E74C3C',
+              shadowColor: '#E74C3C',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.5,
+              shadowRadius: 4,
+              elevation: 3
+            }]} />
+            <Text style={[styles.recordingText, { color: '#8B1A1A', fontWeight: '700' }]}>{formatRecordingTime(recordingTime)}</Text>
           </View>
-          <TouchableOpacity onPress={stopRecording} style={styles.stopButton}>
-            <Ionicons name="send" size={24} color={colors.primary} />
+          <TouchableOpacity
+            onPress={stopRecording}
+            style={[styles.stopButton, {
+              backgroundColor: '#4CAF50',
+              borderRadius: 50,
+              shadowColor: '#4CAF50',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 3
+            }]}
+          >
+            <Ionicons name="send" size={24} color="#8B5A00" />
           </TouchableOpacity>
         </View>
       ) : (
         /* Normal Input UI */
-        <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
+        <View style={[styles.inputWrapper, {
+          backgroundColor: '#FFF9E5',
+          borderTopWidth: 2,
+          borderTopColor: '#FFD4A3',
+          paddingBottom: Math.max(insets.bottom + 8, 16)
+        }]}>
           {/* Attachment Buttons */}
-          <View style={[styles.attachmentBar, { borderBottomColor: colors.border }]}>
-            <TouchableOpacity onPress={takePhoto} style={styles.attachmentButton}>
-              <Ionicons name="camera" size={24} color={colors.primary} />
+          <View style={[styles.attachmentBar, { borderBottomColor: '#FFE4A3', borderBottomWidth: 1 }]}>
+            <TouchableOpacity
+              onPress={takePhoto}
+              style={[styles.attachmentButton, {
+                backgroundColor: '#FFF9E5',
+                borderRadius: 10
+              }]}
+            >
+              <Ionicons name="camera" size={24} color="#FF8C00" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={pickImage} style={styles.attachmentButton}>
-              <Ionicons name="image" size={24} color={colors.primary} />
+            <TouchableOpacity
+              onPress={pickImage}
+              style={[styles.attachmentButton, {
+                backgroundColor: '#FFF9E5',
+                borderRadius: 10
+              }]}
+            >
+              <Ionicons name="image" size={24} color="#9B59B6" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={pickVideo} style={styles.attachmentButton}>
-              <Ionicons name="videocam" size={24} color={colors.primary} />
+            <TouchableOpacity
+              onPress={pickVideo}
+              style={[styles.attachmentButton, {
+                backgroundColor: '#FFF9E5',
+                borderRadius: 10
+              }]}
+            >
+              <Ionicons name="videocam" size={24} color="#E74C3C" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={startRecording} style={styles.attachmentButton}>
-              <Ionicons name="mic" size={24} color={colors.primary} />
+            <TouchableOpacity
+              onPress={startRecording}
+              style={[styles.attachmentButton, {
+                backgroundColor: '#FFF9E5',
+                borderRadius: 10
+              }]}
+            >
+              <Ionicons name="mic" size={24} color="#4CAF50" />
             </TouchableOpacity>
           </View>
 
@@ -926,14 +1048,14 @@ const Chat: React.FC = () => {
             <TextInput
               ref={inputRef}
               style={[styles.input, {
-                backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-                color: theme === 'dark' ? '#ffffff' : '#000000',
-                borderWidth: 1,
-                borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+                backgroundColor: '#FFFFFF',
+                color: '#5D4E37',
+                borderWidth: 2,
+                borderColor: '#FFD4A3',
                 textAlignVertical: 'center',
               }]}
               placeholder="Type your message..."
-              placeholderTextColor={colors.placeholder}
+              placeholderTextColor="#A0753D"
               value={input}
               onChangeText={setInput}
               onSubmitEditing={handleInputSubmit}
@@ -945,7 +1067,14 @@ const Chat: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                { backgroundColor: input.trim() && !sending ? colors.primary : colors.border }
+                {
+                  backgroundColor: input.trim() && !sending ? '#FFB84D' : '#BDBDBD',
+                  shadowColor: input.trim() && !sending ? '#FF8C00' : 'transparent',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 4,
+                  elevation: input.trim() && !sending ? 3 : 0
+                }
               ]}
               onPress={() => sendMessage('text')}
               disabled={!input.trim() || sending}
@@ -957,7 +1086,7 @@ const Chat: React.FC = () => {
                 <Ionicons
                   name="send"
                   size={20}
-                  color={input.trim() && !sending ? "#fff" : colors.textTertiary}
+                  color="#fff"
                 />
               )}
             </TouchableOpacity>
@@ -1028,7 +1157,9 @@ const Chat: React.FC = () => {
           </TouchableOpacity>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </View>
   );
 };
 

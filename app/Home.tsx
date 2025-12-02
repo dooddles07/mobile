@@ -24,11 +24,10 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import axios from "axios";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { initializeSocket, onSOSResolved, onSOSCancelled, removeListener, disconnectSocket } from "../utils/socket";
+import { initializeSocket, onSOSResolved, onSOSCancelled, removeListener } from "../utils/socket";
 import soundManager from "../utils/soundManager";
 import API_ENDPOINTS from "../config/api";
 
-const { width } = Dimensions.get("window");
 
 // Task name for background location tracking
 const LOCATION_TASK_NAME = "background-location-task";
@@ -36,7 +35,7 @@ const LOCATION_TASK_NAME = "background-location-task";
 // Define the background task
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
   if (error) {
-    console.error('🔴 Background location task error:', error);
+    console.error('Background location task error:', error);
     return;
   }
   if (data) {
@@ -48,36 +47,28 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
         const username = await AsyncStorage.getItem("username");
         const { latitude, longitude } = location.coords;
 
-        const backgroundTime = new Date().toLocaleTimeString();
-        console.log(`\n🌐 [${backgroundTime}] BACKGROUND location update triggered`);
-        console.log(`   📍 Background Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-        console.log(`   👤 Username: ${username}`);
-
         const backgroundPayload = {
           username,
           latitude: Number(latitude),
           longitude: Number(longitude),
         };
 
-        // Get auth token for API request
         const token = await AsyncStorage.getItem("token");
 
-        // Send location update to backend
-        const bgResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, backgroundPayload, {
+        await axios.post(`${API_ENDPOINTS.SOS}/send`, backgroundPayload, {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
-        console.log(`   ✅ Background location update sent successfully\n`);
       } catch (error) {
-        console.error('   ❌ Background location update failed:', error);
+        console.error('Background location update failed:', error);
       }
     }
   }
 });
 
 const Home = () => {
-  const { theme, colors } = useTheme();
+  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [username, setUsername] = useState("Loading...");
   const [fullname, setFullname] = useState("Loading...");
@@ -100,8 +91,8 @@ const Home = () => {
   const appStateSubscriptionRef = useRef<any>(null);
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
-    ? ["#fef2f2", "#fee2e2", "#fecaca"]
-    : ["#0f172a", "#1e293b", "#334155"];
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
 
   // Helper function to open device location settings
   const openLocationSettings = async () => {
@@ -171,14 +162,12 @@ const Home = () => {
             socketInitialized.current = true;
 
             // Listen for SOS resolved event from backend (admin resolved)
-            onSOSResolved(async (data) => {
-              console.log('🎯 SOS Resolved event received from admin');
+            onSOSResolved(async () => {
               await handleAdminResolve();
             });
 
             // Listen for SOS cancelled event from backend (user cancelled from app)
-            onSOSCancelled(async (data) => {
-              console.log('🎯 SOS Cancelled event received');
+            onSOSCancelled(async () => {
               await handleSOSCancelledEvent();
             });
           } catch (error) {
@@ -195,8 +184,6 @@ const Home = () => {
             appState.current.match(/inactive|background/) &&
             nextAppState === 'active'
           ) {
-            // App has come to foreground - immediately check location status
-            console.log('App came to foreground - checking location status immediately');
             await checkLocationStatus();
           }
           appState.current = nextAppState;
@@ -265,12 +252,7 @@ const Home = () => {
   }, []);
 
   const checkActiveSOS = async (username: string) => {
-    console.log('🔍 Checking for active SOS on startup (to resume existing session)...');
-    console.log('   Username:', username);
-    console.log('   API Endpoint:', `${API_ENDPOINTS.SOS}/active/${username}`);
-
     try {
-      // Get auth token for API request
       const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
         `${API_ENDPOINTS.SOS}/active/${username}`,
@@ -281,35 +263,20 @@ const Home = () => {
         }
       );
 
-      console.log('✅ Active SOS check response:', JSON.stringify(response.data, null, 2));
-
       // Handle different response formats from backend
       const data = response.data?.data || response.data;
       const hasActiveSOS = data?.hasActiveSOS;
 
-      console.log('   Has active SOS:', hasActiveSOS);
-
       // ONLY resume if there's an EXPLICITLY active SOS
       // This is for cases where user closed the app mid-SOS and reopened it
       if (hasActiveSOS === true) {
-        console.log('🚨 Resuming existing SOS session from server...');
         setSosActive(true);
         startPulseAnimation();
-        // Resume SOS sound
         await soundManager.playSOSSound();
-        console.log('   ✅ SOS sound started');
-        // Resume location tracking
         await startLocationTracking();
-        console.log('   ✅ Location tracking started');
-        // Start status checking to detect when admin resolves
         startStatusChecking();
-        console.log('   ✅ Status checking started');
-        console.log('🎯 SOS session resumed successfully');
-      } else {
-        console.log('✅ No active SOS on server - button remains OFF');
       }
     } catch (error: any) {
-      console.log('ℹ️  No active SOS to resume (expected for fresh start)');
       // 404 or any error means no active SOS - this is fine and expected
     }
   };
@@ -318,18 +285,13 @@ const Home = () => {
     // CONSERVATIVE polling - ONLY runs when SOS is ACTIVE
     // Only checks to detect if admin resolved the SOS
     // Socket events are the primary method - this is just a fallback
-    console.log('⏱️  Starting status polling (checks every 10 seconds for admin resolution)');
-
     statusCheckIntervalRef.current = setInterval(async () => {
       // CRITICAL: Only poll if SOS is still marked as active in app state
       if (!sosActive) {
-        console.log('   ℹ️  SOS not active, skipping poll');
         return;
       }
 
-      console.log('🔄 Status check polling (SOS is active)...');
       try {
-        // Get auth token for API request
         const token = await AsyncStorage.getItem("token");
         const response = await axios.get(
           `${API_ENDPOINTS.SOS}/active/${username}`,
@@ -340,8 +302,6 @@ const Home = () => {
           }
         );
 
-        console.log('   Server response:', response.data);
-
         // Parse response carefully - handle nested data structure
         const data = response.data?.data || response.data;
         const hasActiveSOS = data?.hasActiveSOS;
@@ -349,34 +309,14 @@ const Home = () => {
         // ONLY turn off if we explicitly get hasActiveSOS: false
         // Don't turn off on undefined, null, or missing data
         if (hasActiveSOS === false) {
-          console.log('   ⚡ Server says SOS resolved - turning off button');
           await handleAdminResolve();
-        } else if (hasActiveSOS === true) {
-          console.log('   ✅ SOS still active on server (correct)');
-        } else {
-          console.log('   ⚠️ Ambiguous response, keeping current state:', hasActiveSOS);
         }
       } catch (error: any) {
-        console.error('   ❌ Status check error:', error.message);
-
         // Check if this is a 404 - means SOS doesn't exist (was resolved)
         if (error?.response?.status === 404) {
-          const errorData = error.response?.data;
-          console.log('   📋 404 Response data:', errorData);
-
-          // Check if response explicitly says hasActiveSOS: false
-          if (errorData?.hasActiveSOS === false) {
-            console.log('   ⚡ 404 with hasActiveSOS: false - SOS was resolved');
-            await handleAdminResolve();
-          } else {
-            console.log('   ⚡ 404 - SOS not found on server (likely resolved)');
-            await handleAdminResolve();
-          }
-        } else {
-          // For any other error (network, 500, etc), keep current state
-          // Don't turn off on network errors!
-          console.log('   ⚠️ Non-404 error, keeping SOS active (might be temporary network issue)');
+          await handleAdminResolve();
         }
+        // For any other error (network, 500, etc), keep current state
       }
     }, 10000) as any; // Check every 10 seconds
   };
@@ -482,22 +422,16 @@ const Home = () => {
     return;
   }
 
-  const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-
-  console.log('📍 Location tracking started - Updates configured every 60 seconds (1 minute)');
-  console.log('⏰ First update will occur in 60 seconds');
+  await Location.requestBackgroundPermissionsAsync();
 
   // Update location every 60 seconds (1 minute)
   locationIntervalRef.current = setInterval(async () => {
-    const updateTime = new Date().toLocaleTimeString();
-    console.log(`\n🔄 [${updateTime}] Sending location update...`);
-
     try {
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.BestForNavigation,
       });
 
-      const { latitude, longitude, accuracy: locationAccuracy } = location.coords;
+      const { latitude, longitude } = location.coords;
 
       const updatePayload = {
         username,
@@ -505,33 +439,20 @@ const Home = () => {
         longitude: Number(longitude),
       };
 
-      console.log(`   📍 Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-      console.log(`   🎯 Accuracy: ${Math.round(locationAccuracy)}m`);
-      console.log(`   👤 Username: ${username}`);
-
-      // Get auth token for API request
       const token = await AsyncStorage.getItem("token");
-      const updateResponse = await axios.post(`${API_ENDPOINTS.SOS}/send`, updatePayload, {
+      await axios.post(`${API_ENDPOINTS.SOS}/send`, updatePayload, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
-      console.log(`   ✅ Location update sent successfully`);
-      console.log(`   ⏰ Next update in 60 seconds\n`);
-
       setLastUpdate(new Date());
     } catch (error) {
-      console.error(`   ❌ Location update error:`, error);
+      console.error('Location update error:', error);
     }
-  }, 60000) as any; // Type assertion to fix TypeScript issue
+  }, 60000) as any;
 
   try {
-    console.log('🔔 Starting background location updates...');
-    console.log('   ⏱️  Time interval: 60 seconds (1 minute)');
-    console.log('   📏 Distance interval: 50 meters');
-    console.log('   🔊 Foreground service: SOS Active notification');
-
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
       accuracy: Location.Accuracy.Balanced,
       timeInterval: 60000,
@@ -542,21 +463,16 @@ const Home = () => {
         notificationColor: "#ff3b3b",
       },
     });
-
-    console.log('✅ Background location tracking started successfully\n');
   } catch (error) {
-    console.error('❌ Background tracking setup error:', error);
+    console.error('Background tracking setup error:', error);
   }
 };
 
   const stopLocationTracking = async () => {
-    console.log('🛑 Stopping location tracking...');
-
     // Stop interval
     if (locationIntervalRef.current) {
       clearInterval(locationIntervalRef.current);
       locationIntervalRef.current = null;
-      console.log('   ✅ Foreground location interval stopped');
     }
 
     // Stop background location updates
@@ -564,14 +480,12 @@ const Home = () => {
       const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
       if (hasStarted) {
         await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-        console.log('   ✅ Background location updates stopped');
       }
     } catch (error) {
-      console.error('   ❌ Error stopping background tracking:', error);
+      console.error('Error stopping background tracking:', error);
     }
 
     setLastUpdate(null);
-    console.log('🏁 Location tracking fully stopped\n');
   };
 
   const handleSOS = async () => {
@@ -697,9 +611,7 @@ const Home = () => {
       let location;
       try {
         location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced, // Changed from BestForNavigation for faster response
-          timeout: 15000, // 15 second timeout
-          maximumAge: 10000, // Accept locations up to 10 seconds old
+          accuracy: Location.Accuracy.Balanced,
         });
       } catch (locationError: any) {
 
@@ -752,15 +664,9 @@ const Home = () => {
         longitude: Number(longitude),
       };
 
-      console.log('\n📤 Sending INITIAL SOS alert to backend...');
-      console.log(`   📍 Initial Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-      console.log(`   🎯 Accuracy: ${Math.round(locationAccuracy)}m`);
-      console.log(`   👤 Username: ${username}`);
-
-      // Get auth token for API request
       const token = await AsyncStorage.getItem("token");
 
-      // Step 4: Send initial SOS to backend
+      // Send initial SOS to backend
       const response = await axios.post(
         `${API_ENDPOINTS.SOS}/send`,
         sosPayload,
@@ -771,27 +677,17 @@ const Home = () => {
         }
       );
 
-      console.log('   ✅ Initial SOS alert sent successfully!');
-
       startPulseAnimation();
       setSosActive(true);
       setLastUpdate(new Date());
 
-      console.log('\n🚨 SOS ACTIVATED! 🚨');
-      console.log('═══════════════════════════════════════');
-
       // Play SOS sound with looping
       await soundManager.playSOSSound();
-      console.log('🔊 SOS alarm sound started');
-
-      console.log('📍 Initiating location tracking...');
       await startLocationTracking();
 
       // Start status checking immediately for ultra-fast detection
       // Socket is primary, but polling ensures we catch resolution within 10 seconds max
       startStatusChecking();
-      console.log('⏱️  Status monitoring started (checks every 10 seconds)');
-      console.log('═══════════════════════════════════════\n');
 
       // Extract address safely from response - handle different response formats
       const sosData = response.data?.sos || response.data?.data?.sos || response.data;
@@ -862,30 +758,44 @@ const Home = () => {
   };
 
   return (
-    <LinearGradient
-      colors={gradientColors}
-      style={styles.container}
-    >
-      {/* STATUS BAR */}
-      <View style={[styles.statusBar, { backgroundColor: colors.card, paddingTop: Math.max(insets.top, 50) }]}>
+    <View style={[styles.container, { backgroundColor: '#fcc585' }]}>
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.container}
+      >
+        {/* STATUS BAR */}
+      <View style={[styles.statusBar, {
+        backgroundColor: '#FFF5E6',
+        paddingTop: Math.max(insets.top, 50),
+        borderBottomWidth: 2,
+        borderBottomColor: '#FFD4A3'
+      }]}>
         <View style={styles.statusContent}>
-          <View style={styles.avatarCircle}>
+          <View style={[styles.avatarCircle, {
+            backgroundColor: '#FFE4C4',
+            borderWidth: 2,
+            borderColor: '#FFA500'
+          }]}>
             {avatar ? (
               <Image
                 source={{ uri: avatar }}
                 style={styles.avatarImage}
               />
             ) : (
-              <Ionicons name="person" size={24} color={colors.primary} />
+              <Ionicons name="person" size={24} color="#FF8C00" />
             )}
           </View>
           <View style={styles.userInfo}>
-            <Text style={[styles.greeting, { color: colors.textSecondary }]}>Hello,</Text>
-            <Text style={[styles.userName, { color: colors.text }]}>{fullname}</Text>
+            <Text style={[styles.greeting, { color: '#8B7355' }]}>Hello,</Text>
+            <Text style={[styles.userName, { color: '#5D4E37', fontWeight: '700' }]}>{fullname}</Text>
           </View>
         </View>
         {sosActive && (
-          <View style={styles.activeIndicator}>
+          <View style={[styles.activeIndicator, {
+            backgroundColor: '#FFE4E4',
+            borderColor: '#FF6B6B',
+            borderWidth: 1.5
+          }]}>
             <View style={styles.activeDot} />
             <Text style={styles.activeLabel}>Active</Text>
           </View>
@@ -959,22 +869,40 @@ const Home = () => {
 
         {/* STATUS MESSAGE */}
         {sosActive ? (
-          <View style={[styles.trackingCard, { backgroundColor: colors.card }]}>
-            <Ionicons name="radio-outline" size={24} color={colors.danger} />
+          <View style={[styles.trackingCard, {
+            backgroundColor: '#FFF0F0',
+            borderWidth: 2,
+            borderColor: '#FFB4B4',
+            shadowColor: '#ef4444',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            elevation: 4
+          }]}>
+            <Ionicons name="radio-outline" size={24} color="#ef4444" />
             <View style={styles.trackingContent}>
-              <Text style={[styles.trackingTitle, { color: colors.text }]}>Location Tracking Active</Text>
-              <Text style={[styles.trackingSubtitle, { color: colors.textSecondary }]}>
+              <Text style={[styles.trackingTitle, { color: '#8B0000' }]}>Location Tracking Active</Text>
+              <Text style={[styles.trackingSubtitle, { color: '#A52A2A' }]}>
                 Emergency services notified • Updates every 1 min
               </Text>
               {lastUpdate && (
-                <Text style={[styles.lastUpdate, { color: colors.textTertiary }]}>{formatLastUpdate()}</Text>
+                <Text style={[styles.lastUpdate, { color: '#CD5C5C' }]}>{formatLastUpdate()}</Text>
               )}
             </View>
           </View>
         ) : (
-          <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
-            <Ionicons name="shield-checkmark-outline" size={24} color={colors.primary} />
-            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+          <View style={[styles.infoCard, {
+            backgroundColor: '#E8F5E9',
+            borderWidth: 2,
+            borderColor: '#A5D6A7',
+            shadowColor: '#4CAF50',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            elevation: 4
+          }]}>
+            <Ionicons name="shield-checkmark-outline" size={24} color="#2E7D32" />
+            <Text style={[styles.infoText, { color: '#1B5E20', fontWeight: '500' }]}>
               You're protected. Tap SOS in case of emergency
             </Text>
           </View>
@@ -982,88 +910,168 @@ const Home = () => {
 
         {/* QUICK ACTIONS */}
         <View style={styles.quickActionsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
+          <Text style={[styles.sectionTitle, { color: '#5D4E37', fontWeight: '700' }]}>Quick Actions</Text>
 
           <View style={styles.quickActionsGrid}>
             {/* Emergency Contacts */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              style={[styles.actionCard, {
+                backgroundColor: '#FFE5E5',
+                borderWidth: 2,
+                borderColor: '#FFB3B3',
+                shadowColor: '#ef4444',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
+                elevation: 4
+              }]}
               activeOpacity={0.7}
               onPress={() => router.push('/EmergencyHotline')}
             >
-              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-                <Ionicons name="call" size={24} color="#ef4444" />
+              <View style={[styles.actionIconWrapper, {
+                backgroundColor: '#FF6B6B',
+                shadowColor: '#ef4444',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 3
+              }]}>
+                <Ionicons name="call" size={24} color="#fff" />
               </View>
-              <Text style={[styles.actionCardTitle, { color: colors.text }]}>Emergency</Text>
-              <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>Hotline</Text>
+              <Text style={[styles.actionCardTitle, { color: '#8B0000', fontWeight: '700' }]}>Emergency</Text>
+              <Text style={[styles.actionCardSubtitle, { color: '#A52A2A' }]}>Hotline</Text>
             </TouchableOpacity>
 
             {/* Safety Tips */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              style={[styles.actionCard, {
+                backgroundColor: '#FFF9E5',
+                borderWidth: 2,
+                borderColor: '#FFE4A3',
+                shadowColor: '#fbbf24',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
+                elevation: 4
+              }]}
               activeOpacity={0.7}
               onPress={() => router.push('/SafetyTips')}
             >
-              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(251, 191, 36, 0.1)' }]}>
-                <Ionicons name="bulb" size={24} color="#fbbf24" />
+              <View style={[styles.actionIconWrapper, {
+                backgroundColor: '#FFB84D',
+                shadowColor: '#fbbf24',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 3
+              }]}>
+                <Ionicons name="bulb" size={24} color="#fff" />
               </View>
-              <Text style={[styles.actionCardTitle, { color: colors.text }]}>Safety</Text>
-              <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>Tips</Text>
+              <Text style={[styles.actionCardTitle, { color: '#8B6914', fontWeight: '700' }]}>Safety</Text>
+              <Text style={[styles.actionCardSubtitle, { color: '#A0753D' }]}>Tips</Text>
             </TouchableOpacity>
 
             {/* Location History */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              style={[styles.actionCard, {
+                backgroundColor: '#FFE8E8',
+                borderWidth: 2,
+                borderColor: '#FFB8B8',
+                shadowColor: '#dc2626',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
+                elevation: 4
+              }]}
               activeOpacity={0.7}
               onPress={() => router.push('/LocationHistory')}
             >
-              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(220, 38, 38, 0.1)' }]}>
-                <Ionicons name="location" size={24} color="#dc2626" />
+              <View style={[styles.actionIconWrapper, {
+                backgroundColor: '#E74C3C',
+                shadowColor: '#dc2626',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 3
+              }]}>
+                <Ionicons name="location" size={24} color="#fff" />
               </View>
-              <Text style={[styles.actionCardTitle, { color: colors.text }]}>Location</Text>
-              <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>History</Text>
+              <Text style={[styles.actionCardTitle, { color: '#8B1A1A', fontWeight: '700' }]}>Location</Text>
+              <Text style={[styles.actionCardSubtitle, { color: '#A83232' }]}>History</Text>
             </TouchableOpacity>
 
             {/* Resources */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: colors.card }]}
+              style={[styles.actionCard, {
+                backgroundColor: '#F3E8FF',
+                borderWidth: 2,
+                borderColor: '#D4ADFF',
+                shadowColor: '#8b5cf6',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: 0.2,
+                shadowRadius: 6,
+                elevation: 4
+              }]}
               activeOpacity={0.7}
               onPress={() => router.push('/Resources')}
             >
-              <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
-                <Ionicons name="book" size={24} color="#8b5cf6" />
+              <View style={[styles.actionIconWrapper, {
+                backgroundColor: '#9B59B6',
+                shadowColor: '#8b5cf6',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 3
+              }]}>
+                <Ionicons name="book" size={24} color="#fff" />
               </View>
-              <Text style={[styles.actionCardTitle, { color: colors.text }]}>Resources</Text>
-              <Text style={[styles.actionCardSubtitle, { color: colors.textSecondary }]}>& Info</Text>
+              <Text style={[styles.actionCardTitle, { color: '#5B2C6F', fontWeight: '700' }]}>Resources</Text>
+              <Text style={[styles.actionCardSubtitle, { color: '#7D3C98' }]}>& Info</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* SAFETY STATUS */}
         <View style={styles.safetyStatusSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Safety Status</Text>
+          <Text style={[styles.sectionTitle, { color: '#5D4E37', fontWeight: '700' }]}>Safety Status</Text>
 
-          <View style={[styles.statusCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.statusCard, {
+            backgroundColor: '#E8F5E9',
+            borderWidth: 2,
+            borderColor: '#81C784',
+            shadowColor: '#4CAF50',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            elevation: 4
+          }]}>
             <View style={styles.statusHeader}>
-              <View style={styles.statusBadge}>
-                <Ionicons name="shield-checkmark" size={20} color="#10b981" />
-                <Text style={styles.statusBadgeText}>Protected</Text>
+              <View style={[styles.statusBadge, {
+                backgroundColor: '#4CAF50',
+                shadowColor: '#10b981',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 3,
+                elevation: 2
+              }]}>
+                <Ionicons name="shield-checkmark" size={20} color="#fff" />
+                <Text style={[styles.statusBadgeText, { color: '#fff' }]}>Protected</Text>
               </View>
-              <Text style={[styles.statusTime, { color: colors.textTertiary }]}>All systems active</Text>
+              <Text style={[styles.statusTime, { color: '#2E7D32', fontWeight: '600' }]}>All systems active</Text>
             </View>
 
             <View style={styles.statusItems}>
               <View style={styles.statusItem}>
-                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-                <Text style={[styles.statusItemText, { color: colors.textSecondary }]}>Location tracking ready</Text>
+                <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+                <Text style={[styles.statusItemText, { color: '#2E7D32', fontWeight: '500' }]}>Location tracking ready</Text>
               </View>
               <View style={styles.statusItem}>
-                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-                <Text style={[styles.statusItemText, { color: colors.textSecondary }]}>Emergency contacts available</Text>
+                <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+                <Text style={[styles.statusItemText, { color: '#2E7D32', fontWeight: '500' }]}>Emergency contacts available</Text>
               </View>
               <View style={styles.statusItem}>
-                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-                <Text style={[styles.statusItemText, { color: colors.textSecondary }]}>Support team online</Text>
+                <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+                <Text style={[styles.statusItemText, { color: '#2E7D32', fontWeight: '500' }]}>Support team online</Text>
               </View>
             </View>
           </View>
@@ -1072,26 +1080,45 @@ const Home = () => {
         {/* EMERGENCY NUMBERS */}
         <View style={styles.emergencySection}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency Hotlines</Text>
+            <Text style={[styles.sectionTitle, { color: '#5D4E37', fontWeight: '700' }]}>Emergency Hotlines</Text>
             <TouchableOpacity onPress={() => router.push('/EmergencyHotline')}>
-              <Text style={[styles.viewAllText, { color: colors.warning }]}>View All</Text>
+              <Text style={[styles.viewAllText, { color: '#FF6B6B', fontWeight: '600' }]}>View All →</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.emergencyCard, { backgroundColor: colors.card }]}>
+          <View style={[styles.emergencyCard, {
+            backgroundColor: '#FFF5F5',
+            borderWidth: 2,
+            borderColor: '#FFC9C9',
+            shadowColor: '#ef4444',
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            elevation: 4
+          }]}>
             <TouchableOpacity
               style={styles.emergencyItem}
               activeOpacity={0.7}
               onPress={() => Linking.openURL('tel:1800VAWC')}
             >
               <View style={styles.emergencyLeft}>
-                <Ionicons name="call" size={20} color="#ef4444" />
-                <Text style={[styles.emergencyText, { color: colors.text }]}>VAWC Hotline</Text>
+                <View style={{
+                  backgroundColor: '#FF6B6B',
+                  padding: 8,
+                  borderRadius: 10,
+                  marginRight: 12
+                }}>
+                  <Ionicons name="call" size={20} color="#fff" />
+                </View>
+                <View>
+                  <Text style={[styles.emergencyText, { color: '#8B0000', fontWeight: '600' }]}>VAWC Hotline</Text>
+                  <Text style={{ color: '#CD5C5C', fontSize: 12 }}>24/7 Support</Text>
+                </View>
               </View>
-              <Text style={[styles.emergencyNumber, { color: colors.textSecondary }]}>1-800-VAWC</Text>
+              <Text style={[styles.emergencyNumber, { color: '#A52A2A', fontWeight: '700' }]}>1-800-VAWC</Text>
             </TouchableOpacity>
 
-            <View style={[styles.emergencyDivider, { backgroundColor: colors.border }]} />
+            <View style={[styles.emergencyDivider, { backgroundColor: '#FFD4D4' }]} />
 
             <TouchableOpacity
               style={styles.emergencyItem}
@@ -1099,10 +1126,20 @@ const Home = () => {
               onPress={() => Linking.openURL('tel:911')}
             >
               <View style={styles.emergencyLeft}>
-                <Ionicons name="call" size={20} color="#ef4444" />
-                <Text style={[styles.emergencyText, { color: colors.text }]}>Emergency</Text>
+                <View style={{
+                  backgroundColor: '#E74C3C',
+                  padding: 8,
+                  borderRadius: 10,
+                  marginRight: 12
+                }}>
+                  <Ionicons name="call" size={20} color="#fff" />
+                </View>
+                <View>
+                  <Text style={[styles.emergencyText, { color: '#8B0000', fontWeight: '600' }]}>Emergency</Text>
+                  <Text style={{ color: '#CD5C5C', fontSize: 12 }}>Police & Rescue</Text>
+                </View>
               </View>
-              <Text style={[styles.emergencyNumber, { color: colors.textSecondary }]}>911</Text>
+              <Text style={[styles.emergencyNumber, { color: '#A52A2A', fontWeight: '700' }]}>911</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1111,30 +1148,53 @@ const Home = () => {
       </ScrollView>
 
       {/* BOTTOM NAV */}
-      <View style={[styles.bottomNav, { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={[styles.bottomNav, {
+        backgroundColor: '#FFF5E6',
+        paddingBottom: Math.max(insets.bottom, 12),
+        borderTopWidth: 2,
+        borderTopColor: '#FFD4A3',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 8
+      }]}>
         <TouchableOpacity
-          style={styles.navButton}
+          style={[styles.navButton, {
+            backgroundColor: '#FFF5E6',
+            borderRadius: 12,
+            padding: 8
+          }]}
           onPress={() => router.push("/Account")}
         >
-          <View style={styles.navIconWrapper}>
-            <Ionicons name="person-outline" size={22} color={colors.textSecondary} />
+          <View style={[styles.navIconWrapper, {
+            borderRadius: 10
+          }]}>
+            <Ionicons name="person-outline" size={22} color="#8B5A00" />
           </View>
-          <Text style={[styles.navText, { color: colors.textSecondary }]}>Profile</Text>
+          <Text style={[styles.navText, { color: '#8B5A00', fontWeight: '600' }]}>Profile</Text>
         </TouchableOpacity>
 
-        <View style={[styles.navDivider, { backgroundColor: colors.border }]} />
+        <View style={[styles.navDivider, { backgroundColor: '#FFD4A3', width: 2 }]} />
 
         <TouchableOpacity
-          style={styles.navButton}
+          style={[styles.navButton, {
+            backgroundColor: '#FFF5E6',
+            borderRadius: 12,
+            padding: 8
+          }]}
           onPress={() => router.push("/Chatlist")}
         >
-          <View style={styles.navIconWrapper}>
-            <Ionicons name="chatbubbles-outline" size={22} color={colors.textSecondary} />
+          <View style={[styles.navIconWrapper, {
+            borderRadius: 10
+          }]}>
+            <Ionicons name="chatbubbles-outline" size={22} color="#8B5A00" />
           </View>
-          <Text style={[styles.navText, { color: colors.textSecondary }]}>Messages</Text>
+          <Text style={[styles.navText, { color: '#8B5A00', fontWeight: '600' }]}>Messages</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>
+    </View>
   );
 };
 
@@ -1144,7 +1204,6 @@ const styles = StyleSheet.create({
   },
   // Top Status Bar
   statusBar: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 16,
@@ -1195,12 +1254,12 @@ const styles = StyleSheet.create({
   activeIndicator: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fef2f2",
+    backgroundColor: "rgba(255, 255, 255, 0.4)",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#fecaca",
+    borderColor: "rgba(255, 255, 255, 0.6)",
   },
   activeDot: {
     width: 6,
@@ -1272,7 +1331,6 @@ const styles = StyleSheet.create({
   trackingCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     padding: 20,
     borderRadius: 18,
     width: "100%",
@@ -1307,7 +1365,6 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     padding: 20,
     borderRadius: 18,
     width: "100%",
@@ -1327,12 +1384,10 @@ const styles = StyleSheet.create({
   // Bottom Navigation
   bottomNav: {
     flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.98)",
     paddingTop: 10,
     paddingBottom: 12,
     paddingHorizontal: 30,
     borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
     justifyContent: "space-around",
     alignItems: "center",
   },
@@ -1348,7 +1403,6 @@ const styles = StyleSheet.create({
   navDivider: {
     width: 1,
     height: 30,
-    backgroundColor: "#e5e7eb",
     marginHorizontal: 16,
   },
   navText: {
@@ -1388,7 +1442,6 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     width: "48%",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -1423,7 +1476,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   statusCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     padding: 20,
     shadowColor: "#10b981",
@@ -1475,7 +1527,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   emergencyCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 16,
     padding: 4,
     shadowColor: "#ef4444",

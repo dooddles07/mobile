@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
@@ -463,34 +464,67 @@ const Account: React.FC = () => {
 
   const styles = getStyles(theme, colors);
 
+  const gradientColors: readonly [string, string, string] = theme === 'light'
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
+
   if (isFetching) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={ACCENT_COLOR} />
-        <Text style={[styles.loadingText, { marginTop: 16, color: colors.text }]}>Loading profile...</Text>
+      <View style={[styles.container, { backgroundColor: '#fcc585', justifyContent: 'center', alignItems: 'center' }]}>
+        <LinearGradient
+          colors={gradientColors}
+          style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}
+        >
+          <View style={{
+            backgroundColor: '#FFF9E5',
+            padding: 30,
+            borderRadius: 20,
+            borderWidth: 3,
+            borderColor: '#FFD4A3',
+            alignItems: 'center'
+          }}>
+            <ActivityIndicator size="large" color="#FF8C00" />
+            <Text style={[styles.loadingText, { marginTop: 16, color: '#5D4E37', fontWeight: '600' }]}>Loading profile...</Text>
+          </View>
+        </LinearGradient>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 50) }]}>
+    <View style={[styles.container, { backgroundColor: '#fcc585' }]}>
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.container}
+      >
+        {/* Header */}
+      <View style={[styles.header, {
+        paddingTop: Math.max(insets.top + 10, 50),
+        backgroundColor: '#FFE4C4',
+        borderBottomWidth: 2,
+        borderBottomColor: '#FFD4A3'
+      }]}>
         <TouchableOpacity
           onPress={() => router.push("/Home")}
-          style={styles.headerButton}
+          style={[styles.headerButton, {
+            backgroundColor: '#FFE4C4',
+            borderRadius: 10
+          }]}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <Ionicons name="arrow-back" size={24} color="#8B5A00" />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Account Settings</Text>
+        <Text style={[styles.headerTitle, { color: '#5D4E37', fontWeight: '700' }]}>Account Settings</Text>
 
         <View style={{ position: 'relative' }}>
           <TouchableOpacity
             onPress={() => setMenuOpen(!menuOpen)}
-            style={styles.headerButton}
+            style={[styles.headerButton, {
+              backgroundColor: '#FFE4C4',
+              borderRadius: 10
+            }]}
           >
-            <Ionicons name="ellipsis-vertical" size={24} color={colors.text} />
+            <Ionicons name="ellipsis-vertical" size={24} color="#8B5A00" />
           </TouchableOpacity>
 
           {menuOpen && (
@@ -501,7 +535,11 @@ const Account: React.FC = () => {
                 activeOpacity={1}
               />
               <ScrollView
-                style={[styles.dropdownMenu, { backgroundColor: colors.card }]}
+                style={[styles.dropdownMenu, {
+                  backgroundColor: '#FFFBF5',
+                  borderWidth: 2,
+                  borderColor: '#FFE4C4'
+                }]}
                 nestedScrollEnabled={true}
                 showsVerticalScrollIndicator={false}
               >
@@ -509,8 +547,15 @@ const Account: React.FC = () => {
                   style={styles.dropdownItem}
                   onPress={() => handleMenuAction("theme")}
                 >
-                  <Ionicons name="color-palette-outline" size={20} color={ACCENT_COLOR} />
-                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>
+                  <View style={{
+                    backgroundColor: '#E8DAFF',
+                    padding: 6,
+                    borderRadius: 8,
+                    marginRight: 8
+                  }}>
+                    <Ionicons name="color-palette-outline" size={18} color="#8B5CF6" />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: '#5D4E37', fontWeight: '600' }]}>
                     Theme: {theme === "light" ? "Light" : "Dark"}
                   </Text>
                 </TouchableOpacity>
@@ -519,12 +564,19 @@ const Account: React.FC = () => {
                   style={styles.dropdownItem}
                   onPress={() => handleMenuAction("notification")}
                 >
-                  <Ionicons
-                    name={notificationsEnabled ? "notifications-outline" : "notifications-off-outline"}
-                    size={20}
-                    color={ACCENT_COLOR}
-                  />
-                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>
+                  <View style={{
+                    backgroundColor: '#FFF0E5',
+                    padding: 6,
+                    borderRadius: 8,
+                    marginRight: 8
+                  }}>
+                    <Ionicons
+                      name={notificationsEnabled ? "notifications-outline" : "notifications-off-outline"}
+                      size={18}
+                      color="#FFB84D"
+                    />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: '#5D4E37', fontWeight: '600' }]}>
                     Notifications: {notificationsEnabled ? "On" : "Off"}
                   </Text>
                 </TouchableOpacity>
@@ -533,26 +585,47 @@ const Account: React.FC = () => {
                   style={styles.dropdownItem}
                   onPress={() => handleMenuAction("help")}
                 >
-                  <Ionicons name="help-circle-outline" size={20} color={ACCENT_COLOR} />
-                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>Help & Support</Text>
+                  <View style={{
+                    backgroundColor: '#E3F2FD',
+                    padding: 6,
+                    borderRadius: 8,
+                    marginRight: 8
+                  }}>
+                    <Ionicons name="help-circle-outline" size={18} color="#2196F3" />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: '#5D4E37', fontWeight: '600' }]}>Help & Support</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.dropdownItem}
                   onPress={() => handleMenuAction("about")}
                 >
-                  <Ionicons name="information-circle-outline" size={20} color={ACCENT_COLOR} />
-                  <Text style={[styles.dropdownItemText, { color: colors.text }]}>About ResQYou</Text>
+                  <View style={{
+                    backgroundColor: '#E8F5E9',
+                    padding: 6,
+                    borderRadius: 8,
+                    marginRight: 8
+                  }}>
+                    <Ionicons name="information-circle-outline" size={18} color="#4CAF50" />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: '#5D4E37', fontWeight: '600' }]}>About ResQYou</Text>
                 </TouchableOpacity>
 
-                <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+                <View style={[styles.menuDivider, { backgroundColor: '#FFD4A3', height: 2 }]} />
 
                 <TouchableOpacity
                   style={styles.dropdownItem}
                   onPress={() => handleMenuAction("delete")}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                  <Text style={[styles.dropdownItemText, { color: '#ef4444' }]}>
+                  <View style={{
+                    backgroundColor: '#FFEBEE',
+                    padding: 6,
+                    borderRadius: 8,
+                    marginRight: 8
+                  }}>
+                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                  </View>
+                  <Text style={[styles.dropdownItemText, { color: '#ef4444', fontWeight: '700' }]}>
                     Delete Account
                   </Text>
                 </TouchableOpacity>
@@ -573,79 +646,144 @@ const Account: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Avatar Section */}
-        <View style={[styles.profileHeader, { backgroundColor: colors.card }]}>
+        <View style={[styles.profileHeader, {
+          backgroundColor: '#f8cb97ff',
+          borderBottomWidth: 2,
+          borderBottomColor: '#f8cb97ff',
+          borderTopWidth: 2,
+          borderTopColor: '#FFE4A3'
+        }]}>
           <TouchableOpacity onPress={handleImageUpload} activeOpacity={0.8}>
             <View style={styles.avatarContainer}>
               {profile.avatar ? (
-                <Image source={{ uri: profile.avatar }} style={styles.avatar} />
+                <Image source={{ uri: profile.avatar }} style={[styles.avatar, {
+                  borderWidth: 4,
+                  borderColor: '#FFB84D'
+                }]} />
               ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.backgroundSecondary }]}>
-                  <Ionicons name="person" size={50} color={ACCENT_COLOR} />
+                <View style={[styles.avatar, styles.avatarPlaceholder, {
+                  backgroundColor: '#fcc585',
+                  borderWidth: 4,
+                  borderColor: '#FFB84D'
+                }]}>
+                  <Ionicons name="person" size={50} color="#FF8C00" />
                 </View>
               )}
-              <View style={styles.avatarBadge}>
+              <View style={[styles.avatarBadge, {
+                backgroundColor: '#FF8C00',
+                shadowColor: '#FF8C00',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 3
+              }]}>
                 <Ionicons name="camera" size={16} color="#fff" />
               </View>
             </View>
           </TouchableOpacity>
-          <Text style={[styles.profileName, { color: colors.text }]}>{profile.fullname || 'User Name'}</Text>
-          <Text style={[styles.profileUsername, { color: colors.textSecondary }]}>@{profile.username}</Text>
+          <Text style={[styles.profileName, { color: '#5D4E37', fontWeight: '700' }]}>{profile.fullname || 'User Name'}</Text>
+          <Text style={[styles.profileUsername, { color: '#8B6914', fontWeight: '600' }]}>@{profile.username}</Text>
         </View>
 
         {/* Profile Information Card */}
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Profile Information</Text>
+        <View style={[styles.card, {
+          backgroundColor: '#E8F5E9',
+          borderWidth: 2,
+          borderColor: '#A5D6A7'
+        }]}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 16
+          }}>
+            <View style={{
+              backgroundColor: '#4CAF50',
+              padding: 8,
+              borderRadius: 10,
+              marginRight: 10
+            }}>
+              <Ionicons name="person-outline" size={22} color="#fff" />
+            </View>
+            <Text style={[styles.cardTitle, { color: '#2E7D32', fontWeight: '700', marginBottom: 0 }]}>Profile Information</Text>
+          </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name</Text>
+            <Text style={[styles.label, { color: '#2E7D32', fontWeight: '600' }]}>Full Name</Text>
             <TextInput
               value={profile.fullname}
               onChangeText={(text) => setProfile(prev => ({ ...prev, fullname: text }))}
               placeholder="Enter your full name"
-              style={[styles.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
-              placeholderTextColor={colors.placeholder}
+              style={[styles.input, {
+                backgroundColor: '#FFFFFF',
+                color: '#2E7D32',
+                borderColor: '#81C784',
+                borderWidth: 2
+              }]}
+              placeholderTextColor="#81C784"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
+            <Text style={[styles.label, { color: '#2E7D32', fontWeight: '600' }]}>Email</Text>
             <TextInput
               value={profile.email}
               onChangeText={(text) => setProfile(prev => ({ ...prev, email: text }))}
               placeholder="Enter your email"
               keyboardType="email-address"
               autoCapitalize="none"
-              style={[styles.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
-              placeholderTextColor={colors.placeholder}
+              style={[styles.input, {
+                backgroundColor: '#FFFFFF',
+                color: '#2E7D32',
+                borderColor: '#81C784',
+                borderWidth: 2
+              }]}
+              placeholderTextColor="#81C784"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Contact Number</Text>
+            <Text style={[styles.label, { color: '#2E7D32', fontWeight: '600' }]}>Contact Number</Text>
             <TextInput
               value={profile.contactNumber}
               onChangeText={(text) => setProfile(prev => ({ ...prev, contactNumber: text }))}
               placeholder="Enter your contact number"
               keyboardType="phone-pad"
-              style={[styles.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
-              placeholderTextColor={colors.placeholder}
+              style={[styles.input, {
+                backgroundColor: '#FFFFFF',
+                color: '#2E7D32',
+                borderColor: '#81C784',
+                borderWidth: 2
+              }]}
+              placeholderTextColor="#81C784"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Username</Text>
+            <Text style={[styles.label, { color: '#2E7D32', fontWeight: '600' }]}>Username</Text>
             <TextInput
               value={profile.username}
               editable={false}
-              style={[styles.input, styles.disabledInput, { backgroundColor: colors.backgroundSecondary, color: colors.textSecondary, borderColor: colors.border }]}
-              placeholderTextColor={colors.placeholder}
+              style={[styles.input, styles.disabledInput, {
+                backgroundColor: '#C8E6C9',
+                color: '#558B2F',
+                borderColor: '#81C784',
+                borderWidth: 2
+              }]}
+              placeholderTextColor="#81C784"
             />
-            <Text style={[styles.helperText, { color: colors.textTertiary }]}>Username cannot be changed</Text>
+            <Text style={[styles.helperText, { color: '#558B2F', fontWeight: '500' }]}>Username cannot be changed</Text>
           </View>
 
           <TouchableOpacity
             onPress={handleUpdateProfile}
-            style={[styles.button, styles.primaryButton, !hasProfileChanges() && styles.disabledButton]}
+            style={[styles.button, {
+              backgroundColor: '#4CAF50',
+              shadowColor: '#4CAF50',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4
+            }, !hasProfileChanges() && styles.disabledButton]}
             disabled={isLoading || !hasProfileChanges()}
             activeOpacity={0.8}
           >
@@ -654,26 +792,48 @@ const Account: React.FC = () => {
             ) : (
               <>
                 <Ionicons name="checkmark-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>Update Profile</Text>
+                <Text style={[styles.buttonText, { fontWeight: '700' }]}>Update Profile</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
 
         {/* Password Card */}
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Change Password</Text>
+        <View style={[styles.card, {
+          backgroundColor: '#FFF0E5',
+          borderWidth: 2,
+          borderColor: '#FFD4A3'
+        }]}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 16
+          }}>
+            <View style={{
+              backgroundColor: '#FFB84D',
+              padding: 8,
+              borderRadius: 10,
+              marginRight: 10
+            }}>
+              <Ionicons name="key-outline" size={22} color="#fff" />
+            </View>
+            <Text style={[styles.cardTitle, { color: '#8B6914', fontWeight: '700', marginBottom: 0 }]}>Change Password</Text>
+          </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Current Password</Text>
-            <View style={[styles.passwordWrapper, { backgroundColor: colors.input, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: '#8B6914', fontWeight: '600' }]}>Current Password</Text>
+            <View style={[styles.passwordWrapper, {
+              backgroundColor: '#FFFFFF',
+              borderColor: '#FFE4A3',
+              borderWidth: 2
+            }]}>
               <TextInput
                 secureTextEntry={!passwordVisibility.old}
                 value={passwords.old}
                 onChangeText={(text) => setPasswords(prev => ({ ...prev, old: text }))}
                 placeholder="Enter current password"
-                style={[styles.passwordInput, { color: colors.text }]}
-                placeholderTextColor={colors.placeholder}
+                style={[styles.passwordInput, { color: '#8B6914' }]}
+                placeholderTextColor="#FFD4A3"
               />
               <TouchableOpacity
                 onPress={() => togglePasswordVisibility('old')}
@@ -682,22 +842,26 @@ const Account: React.FC = () => {
                 <Ionicons
                   name={passwordVisibility.old ? "eye-off-outline" : "eye-outline"}
                   size={22}
-                  color={ACCENT_COLOR}
+                  color="#FFB84D"
                 />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>New Password</Text>
-            <View style={[styles.passwordWrapper, { backgroundColor: colors.input, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: '#8B6914', fontWeight: '600' }]}>New Password</Text>
+            <View style={[styles.passwordWrapper, {
+              backgroundColor: '#FFFFFF',
+              borderColor: '#FFE4A3',
+              borderWidth: 2
+            }]}>
               <TextInput
                 secureTextEntry={!passwordVisibility.new}
                 value={passwords.new}
                 onChangeText={(text) => setPasswords(prev => ({ ...prev, new: text }))}
                 placeholder="Enter new password"
-                style={[styles.passwordInput, { color: colors.text }]}
-                placeholderTextColor={colors.placeholder}
+                style={[styles.passwordInput, { color: '#8B6914' }]}
+                placeholderTextColor="#FFD4A3"
               />
               <TouchableOpacity
                 onPress={() => togglePasswordVisibility('new')}
@@ -706,22 +870,26 @@ const Account: React.FC = () => {
                 <Ionicons
                   name={passwordVisibility.new ? "eye-off-outline" : "eye-outline"}
                   size={22}
-                  color={ACCENT_COLOR}
+                  color="#FFB84D"
                 />
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Confirm New Password</Text>
-            <View style={[styles.passwordWrapper, { backgroundColor: colors.input, borderColor: colors.border }]}>
+            <Text style={[styles.label, { color: '#8B6914', fontWeight: '600' }]}>Confirm New Password</Text>
+            <View style={[styles.passwordWrapper, {
+              backgroundColor: '#FFFFFF',
+              borderColor: '#FFE4A3',
+              borderWidth: 2
+            }]}>
               <TextInput
                 secureTextEntry={!passwordVisibility.confirm}
                 value={passwords.confirm}
                 onChangeText={(text) => setPasswords(prev => ({ ...prev, confirm: text }))}
                 placeholder="Re-enter new password"
-                style={[styles.passwordInput, { color: colors.text }]}
-                placeholderTextColor={colors.placeholder}
+                style={[styles.passwordInput, { color: '#8B6914' }]}
+                placeholderTextColor="#FFD4A3"
               />
               <TouchableOpacity
                 onPress={() => togglePasswordVisibility('confirm')}
@@ -730,7 +898,7 @@ const Account: React.FC = () => {
                 <Ionicons
                   name={passwordVisibility.confirm ? "eye-off-outline" : "eye-outline"}
                   size={22}
-                  color={ACCENT_COLOR}
+                  color="#FFB84D"
                 />
               </TouchableOpacity>
             </View>
@@ -738,7 +906,14 @@ const Account: React.FC = () => {
 
           <TouchableOpacity
             onPress={handleChangePassword}
-            style={[styles.button, styles.secondaryButton]}
+            style={[styles.button, {
+              backgroundColor: '#FFB84D',
+              shadowColor: '#FFB84D',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4
+            }]}
             disabled={isLoading}
             activeOpacity={0.8}
           >
@@ -747,7 +922,7 @@ const Account: React.FC = () => {
             ) : (
               <>
                 <Ionicons name="key-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>Change Password</Text>
+                <Text style={[styles.buttonText, { fontWeight: '700' }]}>Change Password</Text>
               </>
             )}
           </TouchableOpacity>
@@ -756,11 +931,20 @@ const Account: React.FC = () => {
         {/* Logout Button */}
         <TouchableOpacity
           onPress={handleLogout}
-          style={[styles.button, styles.logoutButton]}
+          style={[styles.button, {
+            backgroundColor: '#ef4444',
+            marginHorizontal: 16,
+            marginBottom: 16,
+            shadowColor: '#ef4444',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 4
+          }]}
           activeOpacity={0.8}
         >
           <Ionicons name="log-out-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.buttonText}>Log Out</Text>
+          <Text style={[styles.buttonText, { fontWeight: '700' }]}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
       </KeyboardAvoidingView>
@@ -773,19 +957,44 @@ const Account: React.FC = () => {
         onRequestClose={() => setShowHelp(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: ACCENT_COLOR }]}>Help & Support</Text>
-            <Text style={[styles.modalText, { color: colors.text }]}>
+          <View style={[styles.modalContent, {
+            backgroundColor: '#E3F2FD',
+            borderWidth: 3,
+            borderColor: '#90CAF9'
+          }]}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16
+            }}>
+              <View style={{
+                backgroundColor: '#2196F3',
+                padding: 10,
+                borderRadius: 12,
+                marginRight: 12
+              }}>
+                <Ionicons name="help-circle" size={28} color="#fff" />
+              </View>
+              <Text style={[styles.modalTitle, { color: '#1565C0', fontWeight: '700', marginBottom: 0 }]}>Help & Support</Text>
+            </View>
+            <Text style={[styles.modalText, { color: '#0D47A1', fontWeight: '500' }]}>
               Need assistance? Contact our support team:{'\n\n'}
               📧 Email: support@resqyou.com{'\n'}
               📞 Hotline: 1-800-RESQYOU{'\n\n'}
               Available 24/7
             </Text>
             <TouchableOpacity
-              style={[styles.modalButton, { backgroundColor: ACCENT_COLOR }]}
+              style={[styles.modalButton, {
+                backgroundColor: '#2196F3',
+                shadowColor: '#2196F3',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 4
+              }]}
               onPress={() => setShowHelp(false)}
             >
-              <Text style={styles.buttonText}>Close</Text>
+              <Text style={[styles.buttonText, { fontWeight: '700' }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -799,22 +1008,48 @@ const Account: React.FC = () => {
         onRequestClose={() => setShowAbout(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: ACCENT_COLOR }]}>About ResQYou</Text>
-            <Text style={[styles.modalText, { color: colors.text }]}>
+          <View style={[styles.modalContent, {
+            backgroundColor: '#F3E8FF',
+            borderWidth: 3,
+            borderColor: '#D4ADFF'
+          }]}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16
+            }}>
+              <View style={{
+                backgroundColor: '#9B59B6',
+                padding: 10,
+                borderRadius: 12,
+                marginRight: 12
+              }}>
+                <Ionicons name="information-circle" size={28} color="#fff" />
+              </View>
+              <Text style={[styles.modalTitle, { color: '#7D3C98', fontWeight: '700', marginBottom: 0 }]}>About ResQYou</Text>
+            </View>
+            <Text style={[styles.modalText, { color: '#5B2C6F', fontWeight: '500' }]}>
               ResQYou Support App v1.0.0{'\n\n'}
               Providing support and resources for those affected by violence against women and children.{'\n\n'}
               © 2024 ResQYou. All rights reserved.
             </Text>
             <TouchableOpacity
-              style={[styles.modalButton, { backgroundColor: ACCENT_COLOR }]}
+              style={[styles.modalButton, {
+                backgroundColor: '#9B59B6',
+                shadowColor: '#9B59B6',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 4
+              }]}
               onPress={() => setShowAbout(false)}
             >
-              <Text style={styles.buttonText}>Close</Text>
+              <Text style={[styles.buttonText, { fontWeight: '700' }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+    </LinearGradient>
     </View>
   );
 };
@@ -823,7 +1058,6 @@ const Account: React.FC = () => {
 const getStyles = (theme: Theme, colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   loadingText: {
     fontSize: 16,

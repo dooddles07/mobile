@@ -241,12 +241,13 @@ const LocationHistory = () => {
   };
 
   const gradientColors = theme === 'light'
-    ? ['#f0fdfa', '#ccfbf1', '#99f6e4']
-    : ['#0f172a', '#1e293b', '#334155'];
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
 
   return (
-    <LinearGradient colors={gradientColors} style={styles.container}>
-      {/* Header */}
+    <View style={[styles.container, { backgroundColor: '#fcc585' }]}>
+      <LinearGradient colors={gradientColors} style={styles.container}>
+        {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, paddingTop: Math.max(insets.top + 10, 50) }]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -388,7 +389,8 @@ const LocationHistory = () => {
         {/* Bottom Spacing */}
         <View style={{ height: 20 }} />
       </ScrollView>
-    </LinearGradient>
+      </LinearGradient>
+    </View>
   );
 };
 

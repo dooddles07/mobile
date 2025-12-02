@@ -12,6 +12,7 @@ import {
   Platform,
   ActivityIndicator,
   Linking,
+  ImageBackground,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -235,56 +236,65 @@ const LoginScreen = () => {
   };
 
   const gradientColors: readonly [string, string, string] = theme === 'light'
-    ? ["#fef2f2", "#fee2e2", "#fecaca"]
-    : ["#0f172a", "#1e293b", "#334155"];
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
 
   return (
-    <LinearGradient
-      colors={gradientColors}
+    <ImageBackground
+      source={require("../assets/images/bg2.jpg")}
       style={styles.container}
+      imageStyle={{ opacity: 0.7 }}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1, width: "100%" }}
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.container}
       >
-        <ScrollView
-          contentContainerStyle={[styles.innerContainer, { paddingTop: Math.max(insets.top + 20, 60), paddingBottom: Math.max(insets.bottom + 20, 40) }]}
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1, width: "100%" }}
         >
+          <ScrollView
+            contentContainerStyle={[styles.innerContainer, { paddingTop: Math.max(insets.top + 20, 60), paddingBottom: Math.max(insets.bottom + 20, 40) }]}
+            showsVerticalScrollIndicator={false}
+          >
           {/* Logo and Title */}
           <View style={styles.logoContainer}>
             <Image
               source={require("../assets/images/bg1.png")}
-              style={styles.logo}
+              style={[styles.logo, { opacity: theme === 'light' ? 0.95 : 0.85 }]}
               resizeMode="contain"
             />
-            <Text style={[styles.title, { color: colors.text }]}>Welcome</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Sign in to your account</Text>
+            <Image
+              source={require("../assets/images/bg1.1.png")}
+              style={[styles.logoName, { opacity: theme === 'light' ? 0.95 : 0.85 }]}
+              resizeMode="contain"
+            />
           </View>
+          
 
           {/* Input Fields */}
           <View style={styles.formContainer}>
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.inputBorder }]}>
               <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={username}
                 onChangeText={setUsername}
                 placeholder="Username"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 autoCapitalize="none"
                 editable={!isLoading}
               />
             </View>
 
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.inputBorder }]}>
               <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 style={[styles.input, { color: colors.text }]}
                 placeholder="Password"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 editable={!isLoading}
@@ -296,7 +306,7 @@ const LoginScreen = () => {
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color={colors.textSecondary}
+                  color="#f97316"
                 />
               </TouchableOpacity>
             </View>
@@ -309,7 +319,7 @@ const LoginScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: colors.warning }, isLoading && styles.buttonDisabled]}
+              style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}
@@ -332,7 +342,7 @@ const LoginScreen = () => {
                 onPress={() => router.push("/Register")}
                 disabled={isLoading}
               >
-                <Text style={[styles.registerLink, { color: colors.primary }]}>
+                <Text style={[styles.registerLink, { color: colors.warning }]}>
                   Register
                 </Text>
               </TouchableOpacity>
@@ -347,7 +357,7 @@ const LoginScreen = () => {
             {/* Social Login Buttons */}
             <View style={styles.socialButtonsContainer}>
               <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                style={[styles.socialButton]}
                 activeOpacity={0.7}
                 disabled={isLoading}
               >
@@ -355,7 +365,7 @@ const LoginScreen = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                style={[styles.socialButton]}
                 activeOpacity={0.7}
                 disabled={isLoading}
               >
@@ -363,17 +373,18 @@ const LoginScreen = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                style={[styles.socialButton]}
                 activeOpacity={0.7}
                 disabled={isLoading}
               >
-                <Ionicons name="logo-apple" size={24} color="#000000" />
+                <Ionicons name="logo-apple" size={24} color={theme === 'dark' ? '#ffffff' : '#000000'} />
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
+    </ImageBackground>
   );
 };
 
@@ -390,11 +401,16 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: "center",
     marginBottom: 40,
+  
   },
   logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 20,
+    width: 150,
+    height: 150,
+  },
+  logoName: {
+    height: 90,
+    width: 120,
+    marginTop: -20,
   },
   title: {
     fontSize: 28,
@@ -415,6 +431,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 4,
+    backgroundColor: "#f8e9c9ff",
     shadowColor: "#f97316",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -481,7 +498,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#d1d5db",
+    backgroundColor: "#fed7aa",
   },
   dividerText: {
     marginHorizontal: 16,
@@ -493,6 +510,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 16,
     marginTop: 4,
+    opacity: 0.8
   },
   socialButton: {
     width: 64,
@@ -501,11 +519,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    shadowColor: "#000",
+    shadowColor: "#e48a30ff",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    backgroundColor: "#fed7aa",
+    borderColor: '#fed7aa',
+
   },
 });
 

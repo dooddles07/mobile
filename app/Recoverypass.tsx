@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -155,11 +156,16 @@ const RecoveryPass = () => {
   };
 
   const gradientColors = theme === 'light'
-    ? ["#fef2f2", "#fee2e2", "#fecaca"]
-    : ["#0f172a", "#1e293b", "#334155"];
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
 
   return (
-    <LinearGradient
+    <ImageBackground
+      source={require("../assets/images/bg2.jpg")}
+      style={styles.container}
+      imageStyle={{ opacity: 0.6 }}
+    >
+      <LinearGradient
       colors={gradientColors}
       style={styles.container}
     >
@@ -218,7 +224,7 @@ const RecoveryPass = () => {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="Email"
-                  placeholderTextColor={colors.placeholder}
+                  placeholderTextColor="#cfa274ff"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -234,7 +240,7 @@ const RecoveryPass = () => {
                 value={resetCode}
                 onChangeText={(text) => setResetCode(text.replace(/[^0-9]/g, ''))}
                 placeholder="6-Digit Reset Code"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 keyboardType="number-pad"
                 maxLength={6}
                 editable={!loading}
@@ -248,7 +254,7 @@ const RecoveryPass = () => {
                 onChangeText={setNewPassword}
                 style={[styles.input, { color: colors.text }]}
                 placeholder="New Password"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 editable={!loading}
@@ -261,7 +267,7 @@ const RecoveryPass = () => {
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color={colors.textSecondary}
+                  color="#f97316"
                 />
               </TouchableOpacity>
             </View>
@@ -273,7 +279,7 @@ const RecoveryPass = () => {
                 onChangeText={setConfirmPassword}
                 style={[styles.input, { color: colors.text }]}
                 placeholder="Confirm Password"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 editable={!loading}
@@ -286,7 +292,7 @@ const RecoveryPass = () => {
                 <Ionicons
                   name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color={colors.textSecondary}
+                  color="#f97316"
                 />
               </TouchableOpacity>
             </View>
@@ -368,6 +374,7 @@ const RecoveryPass = () => {
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
+    </ImageBackground>
   );
 };
 
@@ -446,6 +453,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 4,
+    backgroundColor: "#f8e9c9ff",
     borderWidth: 1,
     shadowColor: '#f97316',
     shadowOffset: { width: 0, height: 2 },

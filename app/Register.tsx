@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  ImageBackground,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -131,15 +132,20 @@ const Register = () => {
     }
   };
 
-  const gradientColors = theme === 'dark'
-    ? ["#0f172a", "#1e293b", "#334155"]
-    : ["#fef2f2", "#fee2e2", "#fecaca"];
+  const gradientColors = theme === 'light'
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
 
   return (
-    <LinearGradient
-      colors={gradientColors}
+    <ImageBackground
+      source={require("../assets/images/bg2.jpg")}
       style={styles.container}
+      imageStyle={{ opacity: 0.6 }}
     >
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.container}
+      >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1, width: "100%" }}
@@ -167,66 +173,66 @@ const Register = () => {
 
           {/* Input Fields */}
           <View style={styles.formContainer}>
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.inputBorder }]}>
               <Ionicons name="person-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={fullname}
                 onChangeText={setFullname}
                 placeholder="Full Name"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 editable={!isLoading}
               />
             </View>
 
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.inputBorder }]}>
               <Ionicons name="mail-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Email"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!isLoading}
               />
             </View>
 
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.inputBorder }]}>
               <Ionicons name="call-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={contactNumber}
                 onChangeText={setContactNumber}
                 placeholder="Contact Number"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 keyboardType="phone-pad"
                 editable={!isLoading}
               />
             </View>
 
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.inputBorder }]}>
               <Ionicons name="at-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={username}
                 onChangeText={setUsername}
                 placeholder="Username"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 autoCapitalize="none"
                 editable={!isLoading}
               />
             </View>
 
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.inputBorder }]}>
               <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 style={[styles.input, { color: colors.text }]}
                 placeholder="Password"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 editable={!isLoading}
@@ -238,7 +244,7 @@ const Register = () => {
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color={colors.textSecondary}
+                  color="#f97316"
                 />
               </TouchableOpacity>
             </View>
@@ -288,14 +294,14 @@ const Register = () => {
               </View>
             )}
 
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { borderColor: colors.inputBorder }]}>
               <Ionicons name="lock-closed-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 style={[styles.input, { color: colors.text }]}
                 placeholder="Confirm Password"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
                 editable={!isLoading}
@@ -307,7 +313,7 @@ const Register = () => {
                 <Ionicons
                   name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color={colors.textSecondary}
+                  color="#f97316"
                 />
               </TouchableOpacity>
             </View>
@@ -329,9 +335,9 @@ const Register = () => {
             </TouchableOpacity>
 
             <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <View style={[styles.dividerLine, { backgroundColor: "#fed7aa" }]} />
               <Text style={[styles.dividerText, { color: colors.textSecondary }]}>or continue with</Text>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <View style={[styles.dividerLine, { backgroundColor: "#fed7aa" }]} />
             </View>
 
             {/* Social Login Buttons */}
@@ -364,6 +370,7 @@ const Register = () => {
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
+    </ImageBackground>
   );
 };
 
@@ -410,6 +417,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 4,
+    backgroundColor: "#f8e9c9ff",
     borderWidth: 1,
     shadowColor: "#f97316",
     shadowOffset: { width: 0, height: 2 },
@@ -490,6 +498,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 16,
     marginTop: 4,
+    opacity: 0.8
   },
   socialButton: {
     width: 64,
@@ -498,11 +507,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    shadowColor: "#000",
+    shadowColor: "#e48a30ff",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    backgroundColor: "#fed7aa",
+    borderColor: '#fed7aa',
   },
 });
 

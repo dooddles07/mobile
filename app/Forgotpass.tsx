@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -77,14 +78,19 @@ const ForgotPass = () => {
   };
 
   const gradientColors = theme === 'light'
-    ? ["#fef2f2", "#fee2e2", "#fecaca"] as const
-    : ["#0f172a", "#1e293b", "#334155"] as const;
+    ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"] as const
+    : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"] as const;
 
   return (
-    <LinearGradient
-      colors={gradientColors}
+    <ImageBackground
+      source={require("../assets/images/bg2.jpg")}
       style={styles.container}
+      imageStyle={{ opacity: 0.6 }}
     >
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.container}
+      >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, width: "100%" }}
@@ -114,14 +120,14 @@ const ForgotPass = () => {
 
           {/* Input Field */}
           <View style={styles.formContainer}>
-            <View style={[styles.inputWrapper, { backgroundColor: colors.input, borderColor: colors.inputBorder }]}>
+            <View style={[styles.inputWrapper, { backgroundColor: "#f8e9c9ff", borderColor: colors.inputBorder }]}>
               <Ionicons name="mail-outline" size={20} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Email"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor="#cfa274ff"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -145,6 +151,7 @@ const ForgotPass = () => {
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
+    </ImageBackground>
   );
 };
 
@@ -197,6 +204,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 16,
     paddingVertical: 4,
+    backgroundColor: "#f8e9c9ff",
     shadowColor: '#f97316',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
