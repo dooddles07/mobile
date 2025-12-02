@@ -155,7 +155,7 @@ const RecoveryPass = () => {
     }
   };
 
-  const gradientColors = theme === 'light'
+  const gradientColors: readonly [string, string, string] = theme === 'light'
     ? ["rgba(254, 242, 242, 0.3)", "rgba(254, 226, 226, 0.3)", "rgba(254, 202, 202, 0.3)"]
     : ["rgba(15, 23, 42, 0.3)", "rgba(30, 41, 59, 0.3)", "rgba(51, 65, 85, 0.3)"];
 
